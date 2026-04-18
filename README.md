@@ -68,7 +68,7 @@ self-improving-rl-env/
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `ANTHROPIC_API_KEY` | — | Required |
+| `OpenAI_API_KEY` | — | Required |
 | `MAX_EPISODES` | `20` | Training episodes per run |
 | `MAX_STEPS_PER_EPISODE` | `3` | Max solver retries per task |
 | `REWARD_THRESHOLD` | `0.85` | Score for "success" |
