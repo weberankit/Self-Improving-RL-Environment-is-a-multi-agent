@@ -1,0 +1,26 @@
+{
+  "name": "self-improving-rl-env",
+  "version": "2.0.0",
+  "description": "A self-improving reinforcement learning environment powered by Claude LLM agents with persistent memory",
+  "main": "src/index.js",
+  "type": "module",
+  "scripts": {
+    "start": "node src/index.js",
+    "demo": "node demo/runDemo.js",
+    "train": "node src/index.js --mode=train",
+    "eval": "node src/index.js --mode=eval"
+  },
+  "dependencies": {
+    "chalk": "^5.3.0",
+    "dotenv": "^16.4.5",
+    "node-fetch": "^3.3.2",
+    "ora": "^8.0.1",
+    "uuid": "^9.0.1"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "keywords": ["reinforcement-learning", "llm", "self-improving", "claude", "ai-agents"],
+  "author": "",
+  "license": "MIT"
+}
