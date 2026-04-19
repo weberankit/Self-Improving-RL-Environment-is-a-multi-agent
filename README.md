@@ -51,7 +51,7 @@ self-improving-rl-env/
 │   │   ├── solver.js             # Task-solving agent
 │   │   ├── critic.js             # Failure analysis agent
 │   │   └── optimizer.js          # Policy improvement agent
-│   ├── llm/llmClient.js          # Anthropic API client (retry, JSON mode)
+│   ├── llm/llmClient.js          # openai API client (retry, JSON mode)
 │   ├── grader/
 │   │   ├── programmatic.js       # Fast category-specific scoring
 │   │   └── llmGrader.js          # Deep LLM evaluation + hybrid blend
