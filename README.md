@@ -116,3 +116,152 @@ See `docs/reward-design.md` for full breakdown.
 - Node.js 18+
 - Openai API key with Claude Sonnet access
 
+## FAQ — How the System Works
+
+### Q: Does the system pick random tasks from the task bank?
+
+**A:** Not exactly. Task selection depends on the `useCurriculum` setting:
+
+- **With Curriculum (default, training mode)**: Uses a predefined sequence that progresses easy → medium → hard across all 5 categories. Not random — structured learning.
+- **Without Curriculum (eval/random mode)**: Picks random tasks with a no-repeat preference to avoid the same task twice in a row.
+
+For **user-provided tasks**, the system uses whatever task you give it and learns from it.
+
+### Q: Does the agent pick one task and work on it? Why sequence tasks?
+
+**A:** Each episode handles **one task at a time** with up to 3 retry steps:
+- Episode 1: Task A (with retries if needed)
+- Episode 2: Task B (with retries if needed)
+- Episode 3: Task C (with retries if needed)
+
+**Why multiple tasks in sequence?**
+1. **Learning Diversity** — Agent learns patterns from different problem types (coding vs. math vs. reasoning)
+2. **Memory Building** — Distills general rules like "Always show formulas for math" or "Always include edge cases for coding"
+3. **Curriculum** — Starts with easy tasks to build foundation, then progresses to harder tasks
+
+Without diverse tasks, the agent would only learn one specific problem, not generalizable skills.
+
+### Q: If a user provides a new task after the agent learned from 5 taskbank tasks, how does it respond?
+
+**A:** The agent uses all accumulated learning to solve the new task better:
+
+1. **Loads learned knowledge**: Rules, strategies, and optimized prompt from previous 5 tasks
+2. **Injects context**: System prompt is enhanced with learned rules (e.g., "Always show edge cases")
+3. **Generates response**: Uses this enriched prompt to solve the user task
+4. **Gets graded**: Receives score and feedback
+5. **Records learning**: Saves this as new knowledge for future tasks
+
+**Result**: Each user task improves because the agent already learned from the taskbank + previous user tasks.
+
+### Q: Does the system learn from taskbank tasks AND user tasks?
+
+**A:** Yes! Exactly. The learning cycle is:
+
+```
+PHASE 1: TRAINING (Learn from Taskbank)
+  Episodes 1-5: Solve taskbank tasks
+  → Learns general rules (math needs formulas, code needs edge cases, etc.)
+  → Memory saved: learned rules + strategies
+
+PHASE 2: USER TASKS (Apply + Learn)
+  User asks: "Write a sorting algorithm"
+  → Agent uses Phase 1 learning
+  → Solves with high quality
+  → Gets graded + feedback
+  → ADDS to memory
+  
+  User asks: "Another sorting problem"
+  → Agent uses Phase 1 + Phase 2 learning
+  → Even better response
+  → Adds MORE to memory
+```
+
+**Result**: Over 100 user tasks, the agent becomes an expert in solving those specific types of problems.
+
+### Q: When does the system prompt get updated? After each task or after 5-6 tasks?
+
+**A:** System prompt updates happen on a **batch schedule**, not per-episode:
+
+```
+Episodes 1-5:   Use ORIGINAL prompt
+After Episode 5: ⚡ OPTIMIZATION PASS
+                • Analyze all 5 episodes
+                • Find patterns in failures
+                • Generate IMPROVED prompt
+                • Update solver
+
+Episodes 6-10:  Use UPDATED prompt (better!)
+After Episode 10: ⚡ SECOND OPTIMIZATION
+                • Further refinement
+                • New prompt version
+
+Episodes 11-15: Use FURTHER IMPROVED prompt
+```
+
+**Configuration:**
+```javascript
+const env = new SelfImprovingEnv({
+  optimizeEvery: 5  // Can change to 3, 10, etc.
+});
+```
+
+**Example Flow:**
+- Episode 1-5 avg score: 0.67 (below 0.85 threshold) ❌
+- Optimizer analyzes: "Missing edge cases, formulas not shown, vague reasoning"
+- Updates prompt with rules: "ALWAYS show edge cases", "ALWAYS include formulas"
+- Episode 6-10 avg score: 0.83 (improving!) ✓
+- Optimizer refines further: "Analysis tasks need more detail"
+- Episode 11-15 avg score: 0.87+ (approaching target) ✅
+
+**For User Tasks:**
+- Solves with current best prompt (accumulated learning)
+- After enough user tasks (e.g., 5), optimization runs again
+- Prompt updates to include user-task-specific learning
+- Next user task benefits from improved prompt
+
+### Q: Can I use this for my own questions/tasks?
+
+**A:** Yes! Two approaches:
+
+```javascript
+// Approach 1: Run full training, then ask custom task
+const env = new SelfImprovingEnv({ maxEpisodes: 20 });
+await env.run();  // Train on taskbank
+
+// Then solve your custom task
+const myTask = {
+  title: "Your Problem",
+  category: "coding",
+  prompt: "Your problem description...",
+  evaluationCriteria: ["criterion 1", "criterion 2"]
+};
+const episode = await env.step(myTask);
+console.log(episode.bestResponse);
+
+// Approach 2: Build a REST API wrapper
+// POST /solve { task: {...} }
+// Returns: { response: "...", score: 0.92, reasoning: "..." }
+```
+
+The agent will apply all learned knowledge to your custom tasks and get smarter with each one.
+
+### Q: How does the memory actually improve performance?
+
+**A:** Through three mechanisms:
+
+1. **Behavioral Rules**: "DO: Show edge cases for coding", "AVOID: Missing formulas for math"
+2. **Prompt Strategies**: Per-category effective approaches injected into system prompt
+3. **Episode Patterns**: Successful responses stored as reference examples
+
+When solving a new task:
+- Gets relevant rules injected into system prompt
+- References effective strategies for that category
+- Sees examples of similar successful solutions
+- Result: Better informed responses
+
+### Q: What's the difference between training and eval modes?
+
+**A:** 
+- **Training** (`npm start`): Curriculum learning with optimization. Agent improves progressively.
+- **Eval** (`npm run eval`): Tests learned behaviors on new tasks without optimization. Shows if learning transferred.
+- **Demo** (`npm run demo`): 6 episodes with full RL loop visible for understanding.
