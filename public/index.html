@@ -1,0 +1,756 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Self-Improving RL - Complete Flow Visualization</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #0a0e27 0%, #1a1a3e 100%);
+      color: #e0e0e0;
+      overflow-x: hidden;
+    }
+
+    .wrapper {
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+    }
+
+    /* HEADER - INPUT */
+    .header {
+      background: #0f3460;
+      padding: 20px;
+      border-bottom: 2px solid #e94560;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+    }
+
+    .input-section {
+      max-width: 1400px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: 1fr 1fr 150px 150px 120px;
+      gap: 15px;
+      align-items: end;
+    }
+
+    .input-group {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .input-group label {
+      font-size: 11px;
+      color: #64b5f6;
+      font-weight: 600;
+      text-transform: uppercase;
+      margin-bottom: 5px;
+      letter-spacing: 1px;
+    }
+
+    .input-group input,
+    .input-group textarea,
+    .input-group select {
+      padding: 10px;
+      background: #16213e;
+      border: 1px solid #e94560;
+      color: #e0e0e0;
+      border-radius: 4px;
+      font-size: 13px;
+      font-family: 'Segoe UI', sans-serif;
+    }
+
+    .input-group textarea {
+      resize: none;
+      height: 40px;
+    }
+
+    .input-group input:focus,
+    .input-group textarea:focus,
+    .input-group select:focus {
+      outline: none;
+      border-color: #64b5f6;
+      box-shadow: 0 0 8px rgba(100, 181, 246, 0.3);
+    }
+
+    .button-group {
+      display: flex;
+      gap: 10px;
+    }
+
+    button {
+      padding: 10px 15px;
+      background: #e94560;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 12px;
+      text-transform: uppercase;
+      transition: all 0.3s ease;
+    }
+
+    button:hover {
+      background: #ff6b7a;
+    }
+
+    button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    button.secondary {
+      background: #64b5f6;
+    }
+
+    button.secondary:hover {
+      background: #90caf9;
+    }
+
+    /* MAIN CONTENT */
+    .main {
+      flex: 1;
+      display: flex;
+      overflow: hidden;
+    }
+
+    /* LEFT SIDEBAR - MEMORY */
+    .sidebar {
+      width: 280px;
+      background: #0a0e27;
+      border-right: 1px solid #e94560;
+      padding: 20px;
+      overflow-y: auto;
+    }
+
+    .sidebar h3 {
+      color: #64b5f6;
+      font-size: 12px;
+      text-transform: uppercase;
+      margin-bottom: 15px;
+      letter-spacing: 1px;
+    }
+
+    .stats-box {
+      background: #16213e;
+      padding: 12px;
+      border-radius: 6px;
+      margin-bottom: 12px;
+      border-left: 3px solid #e94560;
+    }
+
+    .stat-row {
+      display: flex;
+      justify-content: space-between;
+      font-size: 12px;
+      margin-bottom: 5px;
+    }
+
+    .stat-label {
+      color: #b0bec5;
+    }
+
+    .stat-value {
+      color: #4caf50;
+      font-weight: 600;
+    }
+
+    .rule-item {
+      background: #0f3460;
+      padding: 8px;
+      border-radius: 4px;
+      margin-bottom: 6px;
+      font-size: 11px;
+      border-left: 2px solid #4caf50;
+      color: #b0bec5;
+    }
+
+    /* CENTER - FLOW VISUALIZATION */
+    .flow-container {
+      flex: 1;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+      padding: 30px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .flow-title {
+      color: #e94560;
+      font-size: 16px;
+      margin-bottom: 20px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      text-align: center;
+    }
+
+    /* FLOW DIAGRAM */
+    .flow-diagram {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 15px;
+      margin-bottom: 30px;
+    }
+
+    .flow-node {
+      background: #0f3460;
+      border: 2px solid #e94560;
+      border-radius: 8px;
+      padding: 15px;
+      text-align: center;
+      position: relative;
+      transition: all 0.3s ease;
+    }
+
+    .flow-node.active {
+      border-color: #64b5f6;
+      box-shadow: 0 0 20px rgba(100, 181, 246, 0.5);
+      background: #16213e;
+    }
+
+    .flow-node.complete {
+      border-color: #4caf50;
+      background: rgba(76, 175, 80, 0.1);
+    }
+
+    .flow-node-icon {
+      font-size: 32px;
+      margin-bottom: 8px;
+    }
+
+    .flow-node-label {
+      font-size: 11px;
+      color: #64b5f6;
+      font-weight: 600;
+      text-transform: uppercase;
+      margin-bottom: 5px;
+    }
+
+    .flow-node-status {
+      font-size: 11px;
+      color: #b0bec5;
+      height: 30px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .flow-connector {
+      position: absolute;
+      top: 50%;
+      right: -15px;
+      width: 15px;
+      height: 2px;
+      background: #e94560;
+      transform: translateY(-50%);
+    }
+
+    .flow-connector.active {
+      background: #64b5f6;
+      box-shadow: 0 0 10px #64b5f6;
+    }
+
+    /* DETAILS SECTION */
+    .details-section {
+      background: #0f3460;
+      border-radius: 8px;
+      padding: 20px;
+      margin-bottom: 20px;
+      border-left: 4px solid #e94560;
+    }
+
+    .details-title {
+      color: #64b5f6;
+      font-size: 12px;
+      text-transform: uppercase;
+      margin-bottom: 10px;
+      font-weight: 600;
+    }
+
+    .details-content {
+      font-size: 13px;
+      color: #b0bec5;
+      line-height: 1.6;
+    }
+
+    .score-display {
+      font-size: 36px;
+      color: #e94560;
+      font-weight: 700;
+      text-align: center;
+      margin: 10px 0;
+    }
+
+    .response-box {
+      background: #16213e;
+      border-left: 3px solid #64b5f6;
+      padding: 12px;
+      border-radius: 4px;
+      font-family: 'Courier New', monospace;
+      font-size: 12px;
+      max-height: 150px;
+      overflow-y: auto;
+      margin-top: 10px;
+    }
+
+    /* MEMORY DISPLAY */
+    .memory-section {
+      background: #0f3460;
+      border: 2px solid #4caf50;
+      border-radius: 8px;
+      padding: 15px;
+      margin-bottom: 20px;
+    }
+
+    .memory-section h4 {
+      color: #4caf50;
+      font-size: 11px;
+      text-transform: uppercase;
+      margin-bottom: 10px;
+    }
+
+    .memory-rule {
+      background: #16213e;
+      padding: 8px;
+      border-radius: 4px;
+      margin-bottom: 6px;
+      font-size: 12px;
+      border-left: 2px solid #4caf50;
+      color: #a5d6a7;
+    }
+
+    /* OUTPUT SECTION */
+    .output-section {
+      background: #0f3460;
+      border: 2px solid #4caf50;
+      border-radius: 8px;
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+
+    .output-title {
+      color: #4caf50;
+      font-size: 12px;
+      text-transform: uppercase;
+      margin-bottom: 10px;
+      font-weight: 600;
+    }
+
+    .output-content {
+      background: #16213e;
+      padding: 15px;
+      border-radius: 4px;
+      font-size: 13px;
+      color: #b0bec5;
+      line-height: 1.6;
+      max-height: 200px;
+      overflow-y: auto;
+    }
+
+    .success-badge {
+      display: inline-block;
+      background: #4caf50;
+      color: white;
+      padding: 6px 12px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 600;
+      margin-top: 10px;
+    }
+
+    .error-badge {
+      display: inline-block;
+      background: #e94560;
+      color: white;
+      padding: 6px 12px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 600;
+      margin-top: 10px;
+    }
+
+    .loading-spinner {
+      display: inline-block;
+      width: 14px;
+      height: 14px;
+      border: 2px solid #64b5f6;
+      border-top: 2px solid transparent;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .empty-state {
+      text-align: center;
+      color: #64b5f6;
+      padding: 60px 20px;
+      opacity: 0.6;
+    }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar {
+      width: 8px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: #0f3460;
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: #e94560;
+      border-radius: 4px;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+      background: #ff6b7a;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrapper">
+    <!-- HEADER: Input -->
+    <div class="header">
+      <div class="input-section">
+        <div class="input-group">
+          <label>Task Title *</label>
+          <input type="text" id="title" placeholder="e.g., Write binary search">
+        </div>
+        <div class="input-group">
+          <label>Task Description *</label>
+          <textarea id="prompt" placeholder="Describe the task..."></textarea>
+        </div>
+        <div class="input-group">
+          <label>Category</label>
+          <select id="category">
+            <option value="coding">Coding</option>
+            <option value="math">Math</option>
+            <option value="reasoning">Reasoning</option>
+            <option value="writing">Writing</option>
+            <option value="analysis">Analysis</option>
+          </select>
+        </div>
+        <div class="input-group">
+          <label>Difficulty</label>
+          <select id="difficulty">
+            <option value="easy">Easy</option>
+            <option value="medium" selected>Medium</option>
+            <option value="hard">Hard</option>
+          </select>
+        </div>
+        <div class="button-group">
+          <button id="submitBtn" onclick="submitTask()">Submit</button>
+          <button class="secondary" onclick="resetSession()">Reset</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- MAIN CONTENT -->
+    <div class="main">
+      <!-- LEFT SIDEBAR: Memory -->
+      <div class="sidebar">
+        <h3>📊 Memory Stats</h3>
+        <div id="memoryStats">
+          <div class="stat-row">
+            <span class="stat-label">Episodes:</span>
+            <span class="stat-value">0</span>
+          </div>
+          <div class="stat-row">
+            <span class="stat-label">Rules:</span>
+            <span class="stat-value">0</span>
+          </div>
+          <div class="stat-row">
+            <span class="stat-label">Avg Reward:</span>
+            <span class="stat-value">0.00</span>
+          </div>
+        </div>
+
+        <h3 style="margin-top: 20px;">🧠 Learned Rules</h3>
+        <div id="learnedRules">
+          <div style="color: #64b5f6; font-size: 11px; text-align: center; padding: 20px;">
+            No rules learned yet
+          </div>
+        </div>
+      </div>
+
+      <!-- CENTER: Full Flow Visualization -->
+      <div class="flow-container">
+        <!-- Flow Diagram -->
+        <div class="flow-title">📊 Complete System Flow</div>
+        
+        <div class="flow-diagram">
+          <div class="flow-node" id="node-input">
+            <div class="flow-node-icon">📝</div>
+            <div class="flow-node-label">Input</div>
+            <div class="flow-node-status">Your Task</div>
+          </div>
+
+          <div class="flow-node" id="node-solver">
+            <div class="flow-connector" id="conn-1"></div>
+            <div class="flow-node-icon">🤖</div>
+            <div class="flow-node-label">Solver</div>
+            <div class="flow-node-status">Waiting...</div>
+          </div>
+
+          <div class="flow-node" id="node-grader">
+            <div class="flow-connector" id="conn-2"></div>
+            <div class="flow-node-icon">🏆</div>
+            <div class="flow-node-label">Grader</div>
+            <div class="flow-node-status">Waiting...</div>
+          </div>
+
+          <div class="flow-node" id="node-critic">
+            <div class="flow-connector" id="conn-3"></div>
+            <div class="flow-node-icon">🧠</div>
+            <div class="flow-node-label">Critic</div>
+            <div class="flow-node-status">Waiting...</div>
+          </div>
+
+          <div class="flow-node" id="node-memory">
+            <div class="flow-node-icon">💾</div>
+            <div class="flow-node-label">Memory</div>
+            <div class="flow-node-status">Recording...</div>
+          </div>
+        </div>
+
+        <!-- Details Display -->
+        <div id="detailsContainer"></div>
+
+        <!-- Output -->
+        <div id="outputContainer"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let ws = null;
+    let isProcessing = false;
+
+    function connectWebSocket() {
+      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      ws = new WebSocket(`${protocol}//${window.location.host}`);
+
+      ws.onopen = () => {
+        console.log('WebSocket connected');
+        updateMemoryDisplay();
+      };
+
+      ws.onmessage = (event) => {
+        const message = JSON.parse(event.data);
+        handleMessage(message);
+      };
+
+      ws.onerror = (err) => console.error('WebSocket error:', err);
+      ws.onclose = () => {
+        console.log('Reconnecting...');
+        setTimeout(connectWebSocket, 3000);
+      };
+    }
+
+    function handleMessage(message) {
+      const { type, data } = message;
+
+      if (type === 'task_received') {
+        displayTaskReceived(data.task);
+      } else if (type === 'step_update') {
+        updateFlowStep(data);
+      } else if (type === 'episode_summary') {
+        displaySummary(data);
+      }
+    }
+
+    function displayTaskReceived(task) {
+      document.getElementById('node-input').classList.add('complete');
+      document.getElementById('detailsContainer').innerHTML = `
+        <div class="details-section">
+          <div class="details-title">📝 Task Input</div>
+          <div class="details-content">
+            <strong>${task.title}</strong><br>
+            <small>[${task.category.toUpperCase()} / ${task.difficulty.toUpperCase()}]</small><br><br>
+            ${task.prompt.substring(0, 200)}...
+          </div>
+        </div>
+      `;
+    }
+
+    function updateFlowStep(data) {
+      const agentMap = {
+        'solver': 'node-solver',
+        'grader': 'node-grader',
+        'critic': 'node-critic',
+        'memory': 'node-memory'
+      };
+
+      const nodeId = agentMap[data.agent];
+      if (!nodeId) return;
+
+      const node = document.getElementById(nodeId);
+      const status = node.querySelector('.flow-node-status');
+
+      if (data.status === 'in-progress') {
+        node.classList.add('active');
+        status.innerHTML = `<span class="loading-spinner"></span> Working...`;
+      } else if (data.status === 'complete') {
+        node.classList.add('complete');
+        node.classList.remove('active');
+        status.textContent = '✓ Complete';
+      }
+
+      // Update connectors
+      const connectorMap = { 'solver': 1, 'grader': 2, 'critic': 3 };
+      if (connectorMap[data.agent]) {
+        const connector = document.getElementById(`conn-${connectorMap[data.agent]}`);
+        if (connector) connector.classList.add('active');
+      }
+
+      // Show details
+      let details = `
+        <div class="details-section">
+          <div class="details-title">${data.agent.toUpperCase()} - Step ${data.stepNum}</div>
+          <div class="details-content">${data.message}</div>
+      `;
+
+      if (data.data) {
+        if (data.data.score !== undefined) {
+          details += `<div class="score-display">${(data.data.score * 100).toFixed(0)}%</div>`;
+        }
+        if (data.data.feedback) {
+          details += `<div style="margin-top: 10px;"><strong>Feedback:</strong><br>${data.data.feedback}</div>`;
+        }
+        if (data.data.response) {
+          details += `<div class="response-box">${data.data.response.substring(0, 300)}</div>`;
+        }
+      }
+
+      details += `</div>`;
+      document.getElementById('detailsContainer').insertAdjacentHTML('beforeend', details);
+
+      // Auto scroll
+      document.querySelector('.flow-container').scrollTop = document.querySelector('.flow-container').scrollHeight;
+    }
+
+    function displaySummary(data) {
+      const badge = data.success ? 
+        `<div class="success-badge">✅ SUCCESS - Score: ${(data.reward * 100).toFixed(0)}%</div>` :
+        `<div class="error-badge">❌ INCOMPLETE - Score: ${(data.reward * 100).toFixed(0)}%</div>`;
+
+      document.getElementById('outputContainer').innerHTML = `
+        <div class="output-section">
+          <div class="output-title">📊 Episode Summary</div>
+          <div class="output-content">
+            <strong>Final Score:</strong> ${(data.reward * 100).toFixed(1)}%<br>
+            <strong>Steps Used:</strong> ${data.stepsUsed}/3<br>
+            <strong>Status:</strong> ${data.success ? 'SUCCESS ✅' : 'NEEDS RETRY ⚠️'}
+            ${badge}
+          </div>
+        </div>
+      `;
+
+      updateMemoryDisplay();
+      document.getElementById('submitBtn').disabled = false;
+      isProcessing = false;
+    }
+
+    async function updateMemoryDisplay() {
+      try {
+        const response = await fetch('/api/memory');
+        const memory = await response.json();
+
+        const stats = `
+          <div class="stat-row">
+            <span class="stat-label">Episodes:</span>
+            <span class="stat-value">${memory.globalStats.totalEpisodes}</span>
+          </div>
+          <div class="stat-row">
+            <span class="stat-label">Rules:</span>
+            <span class="stat-value">${memory.learnedRules.length}</span>
+          </div>
+          <div class="stat-row">
+            <span class="stat-label">Avg Reward:</span>
+            <span class="stat-value">${(memory.globalStats.avgReward || 0).toFixed(2)}</span>
+          </div>
+          <div class="stat-row">
+            <span class="stat-label">Peak Reward:</span>
+            <span class="stat-value">${(memory.globalStats.bestReward || 0).toFixed(2)}</span>
+          </div>
+        `;
+
+        const rules = memory.learnedRules.slice(-5).map(r => `
+          <div class="rule-item">• ${r.rule}</div>
+        `).join('') || '<div style="color: #64b5f6; font-size: 11px; text-align: center; padding: 10px;">No rules yet</div>';
+
+        document.getElementById('memoryStats').innerHTML = stats;
+        document.getElementById('learnedRules').innerHTML = rules;
+      } catch (err) {
+        console.error('Failed to load memory:', err);
+      }
+    }
+
+    async function submitTask() {
+      const title = document.getElementById('title').value;
+      const prompt = document.getElementById('prompt').value;
+      const category = document.getElementById('category').value;
+      const difficulty = document.getElementById('difficulty').value;
+
+      if (!title || !prompt) {
+        alert('Please fill in title and description');
+        return;
+      }
+
+      isProcessing = true;
+      document.getElementById('submitBtn').disabled = true;
+
+      // Reset flow visualization
+      document.querySelectorAll('.flow-node').forEach(node => {
+        node.classList.remove('active', 'complete');
+        node.querySelector('.flow-node-status').textContent = 'Ready...';
+      });
+      document.querySelectorAll('.flow-connector').forEach(c => c.classList.remove('active'));
+      document.getElementById('detailsContainer').innerHTML = '';
+      document.getElementById('outputContainer').innerHTML = '';
+
+      try {
+        await fetch('/api/task', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            title, prompt, category, difficulty,
+            evaluationCriteria: ['Correct and accurate', 'Well-structured', 'Handles edge cases']
+          })
+        });
+      } catch (err) {
+        alert('Error: ' + err.message);
+        document.getElementById('submitBtn').disabled = false;
+        isProcessing = false;
+      }
+    }
+
+    async function resetSession() {
+      await fetch('/api/reset', { method: 'POST' });
+      document.getElementById('title').value = '';
+      document.getElementById('prompt').value = '';
+      document.getElementById('detailsContainer').innerHTML = '';
+      document.getElementById('outputContainer').innerHTML = '';
+      document.querySelectorAll('.flow-node').forEach(node => {
+        node.classList.remove('active', 'complete');
+        node.querySelector('.flow-node-status').textContent = 'Waiting...';
+      });
+      document.querySelectorAll('.flow-connector').forEach(c => c.classList.remove('active'));
+      updateMemoryDisplay();
+    }
+
+    connectWebSocket();
+    updateMemoryDisplay();
+  </script>
+</body>
+</html>

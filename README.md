@@ -29,25 +29,87 @@ npm install
 
 # 2. Configure
 cp .env.example .env
-# Edit .env and add your ANTHROPIC_API_KEY
+# Edit .env and add your OPENAI_API_KEY
 
-# 3. Run demo (6 episodes, full RL loop)
+# 3. Run web dashboard (interactive visualization!)
+npm run web
+# Open http://localhost:3000 in browser
+
+# 4. Run demo (6 episodes, full RL loop)
 npm run demo
 
-# 4. Full training run (20 episodes, curriculum)
+# 5. Full training run (20 episodes, curriculum)
 npm start
 
-# 5. Evaluation only (tests learned behaviors)
+# 6. Evaluation only (tests learned behaviors)
 npm run eval
 ```
+
+## Web Dashboard 🎨
+
+The interactive dashboard lets you see the entire system in action:
+
+```
+Left Panel (Input):            Right Panel (Visualization):
+├─ Task Title                 ├─ 🤖 Solver Agent
+├─ Task Description           │  └─ Response generation in progress
+├─ Category                   ├─ 🏆 Grader Agent
+├─ Difficulty                 │  └─ Score & feedback
+└─ Memory Stats               ├─ 🧠 Critic Agent
+   ├─ Learned Rules           │  └─ Failure analysis
+   ├─ Strategies              ├─ 💾 Memory
+   └─ Performance             │  └─ Rules learned & stored
+                              └─ ⚡ Optimization
+                                 └─ Prompt improvements
+```
+
+**Features:**
+- **Real-time updates** via WebSocket
+- **Step-by-step visualization** of all agents
+- **Memory inspection** showing learned rules
+- **Score tracking** and episode summaries
+- **Live agent workflow** from input to output
+- **Learning visualization** showing how system improves
+
+**See it in action:**
+```bash
+npm run web
+# Open http://localhost:3000
+# Submit tasks and watch agents work in real-time!
+```
+
+For detailed dashboard guide, see [docs/dashboard-guide.md](docs/dashboard-guide.md)
 
 ## Project Structure
 
 ```
 self-improving-rl-env/
+├── server.js                         # Express + WebSocket server for dashboard
+├── public/
+│   └── index.html                    # Interactive web dashboard UI
 ├── src/
-│   ├── env/SelfImprovingEnv.js   # Main orchestrator, episode loop
+│   ├── env/SelfImprovingEnv.js       # Main orchestrator, episode loop
 │   ├── agents/
+│   │   ├── solver.js                 # Task-solving agent
+│   │   ├── critic.js                 # Failure analysis agent
+│   │   └── optimizer.js              # Policy improvement agent
+│   ├── llm/llmClient.js              # OpenAI API client (retry, JSON mode)
+│   ├── grader/
+│   │   ├── programmatic.js           # Fast category-specific scoring
+│   │   └── llmGrader.js              # Deep LLM evaluation + hybrid blend
+│   ├── memory/memoryStore.js         # Persistent JSON memory + rule distillation
+│   ├── tasks/sampleTasks.js          # 15 real-world tasks (5 categories × 3 difficulties)
+│   └── utils/logger.js               # Colorized logger with icons
+├── demo/runDemo.js                   # Interactive demo with progress display
+├── docs/
+│   ├── architecture.md               # System design & RL formulation
+│   ├── reward-design.md              # Reward shaping & scoring rubrics
+│   └── dashboard-guide.md            # Web dashboard user guide
+├── memory/
+│   └── agent_memory.json             # Persistent learning state
+└── logs/                             # Experiment logs
+```
+
 │   │   ├── solver.js             # Task-solving agent
 │   │   ├── critic.js             # Failure analysis agent
 │   │   └── optimizer.js          # Policy improvement agent
