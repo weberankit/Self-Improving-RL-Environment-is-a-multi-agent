@@ -14,7 +14,7 @@ Return ONLY valid JSON — no markdown, no preamble.`;
 export class CriticAgent {
   constructor() {
     this.llm = new LLMClient({
-      model: process.env.CRITIC_MODEL || 'claude-sonnet-4-20250514',
+      model: process.env.CRITIC_MODEL || 'gpt-4o-mini',
       maxTokens: 1024,
       temperature: 0.2,
     });

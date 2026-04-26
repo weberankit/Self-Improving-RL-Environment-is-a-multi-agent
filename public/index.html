@@ -1,756 +1,2754 @@
+<!-- <!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Self-Improving Agent</title>
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #0b0d10;
+      --panel: #11151b;
+      --panel-2: #151a21;
+      --line: #28313d;
+      --text: #eef2f7;
+      --muted: #93a1b3;
+      --blue: #60a5fa;
+      --green: #34d399;
+      --amber: #fbbf24;
+      --red: #fb7185;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      min-height: 100vh;
+      margin: 0;
+      background:
+        radial-gradient(circle at top left, rgba(96, 165, 250, 0.12), transparent 34rem),
+        linear-gradient(135deg, #0b0d10 0%, #10141a 52%, #0b0d10 100%);
+      color: var(--text);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      letter-spacing: 0;
+    }
+
+    button, textarea { font: inherit; }
+
+    .panel {
+      background: color-mix(in srgb, var(--panel) 92%, transparent);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      box-shadow: 0 18px 45px rgba(0, 0, 0, 0.24);
+    }
+
+    .agent-card {
+      min-height: 108px;
+      transition: border-color 160ms ease, background 160ms ease;
+    }
+
+    .agent-card.active {
+      border-color: color-mix(in srgb, var(--blue) 70%, var(--line));
+      background: color-mix(in srgb, var(--panel-2) 92%, var(--blue));
+    }
+
+    .agent-card.done {
+      border-color: color-mix(in srgb, var(--green) 58%, var(--line));
+    }
+
+    .agent-card.error {
+      border-color: color-mix(in srgb, var(--red) 70%, var(--line));
+    }
+
+    .timeline-item {
+      border-left: 2px solid var(--line);
+      padding-left: 1rem;
+      position: relative;
+    }
+
+    .timeline-item::before {
+      content: "";
+      width: 0.62rem;
+      height: 0.62rem;
+      border-radius: 999px;
+      background: var(--blue);
+      position: absolute;
+      left: -0.38rem;
+      top: 0.4rem;
+    }
+
+    .score-track {
+      height: 0.45rem;
+      overflow: hidden;
+      border-radius: 999px;
+      background: #222a35;
+    }
+
+    .score-fill {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, var(--blue), var(--green));
+      transition: width 260ms ease;
+    }
+
+    .code-output {
+      max-height: 34rem;
+      overflow: auto;
+      white-space: pre-wrap;
+      word-break: break-word;
+      border-radius: 8px;
+    }
+
+    .icon-btn {
+      width: 2.5rem;
+      height: 2.5rem;
+      display: inline-grid;
+      place-items: center;
+      border-radius: 8px;
+      border: 1px solid var(--line);
+      color: var(--text);
+      background: #151a21;
+    }
+
+    .icon-btn:hover { border-color: #445166; }
+  </style>
+</head>
+
+<body>
+  <main class="mx-auto flex min-h-screen w-full max-w-7xl flex-col gap-5 px-4 py-5 lg:px-6">
+    <header class="flex flex-col gap-4 border-b border-slate-800 pb-5 lg:flex-row lg:items-center lg:justify-between">
+      <div>
+        <div class="text-sm font-medium uppercase tracking-wide text-slate-400">Self-Improving RL Environment</div>
+        <h1 class="mt-1 text-3xl font-semibold text-white">Agent Workspace</h1>
+      </div>
+      <div class="grid grid-cols-3 gap-2 text-sm">
+        <div class="panel px-4 py-3">
+          <div class="text-slate-400">Episodes</div>
+          <div id="stat-episodes" class="mt-1 text-xl font-semibold">0</div>
+        </div>
+        <div class="panel px-4 py-3">
+          <div class="text-slate-400">Avg Reward</div>
+          <div id="stat-reward" class="mt-1 text-xl font-semibold">0.000</div>
+        </div>
+        <div class="panel px-4 py-3">
+          <div class="text-slate-400">Rules</div>
+          <div id="stat-rules" class="mt-1 text-xl font-semibold">0</div>
+        </div>
+      </div>
+    </header>
+
+    <section class="grid flex-1 gap-5 lg:grid-cols-[minmax(320px,0.82fr)_minmax(560px,1.18fr)]">
+      <div class="flex flex-col gap-5">
+        <section class="panel p-4">
+          <div class="mb-3 flex items-center justify-between">
+            <h2 class="text-lg font-semibold">Query</h2>
+            <button id="clear-btn" class="icon-btn" title="Clear" type="button">
+              <i data-lucide="rotate-ccw" class="h-4 w-4"></i>
+            </button>
+          </div>
+
+          <textarea
+            id="task-input"
+            class="min-h-44 w-full resize-y rounded-lg border border-slate-700 bg-slate-950 p-4 text-base leading-6 text-white outline-none transition focus:border-blue-400"
+            placeholder="Ask the agent to solve a coding, math, reasoning, writing, or analysis task."
+          ></textarea>
+
+          <div class="mt-4 flex items-center gap-3">
+            <button
+              id="solve-btn"
+              class="flex min-h-11 flex-1 items-center justify-center gap-2 rounded-lg bg-blue-500 px-4 py-2.5 font-semibold text-slate-950 transition hover:bg-blue-400 disabled:cursor-not-allowed disabled:opacity-50"
+              type="button"
+            >
+              <i data-lucide="play" class="h-4 w-4"></i>
+              Run
+            </button>
+            <button id="copy-btn" class="icon-btn" title="Copy output" type="button" disabled>
+              <i data-lucide="copy" class="h-4 w-4"></i>
+            </button>
+          </div>
+        </section>
+
+        <section class="panel p-4">
+          <div class="mb-4 flex items-center justify-between">
+            <h2 class="text-lg font-semibold">Classification</h2>
+            <span id="run-state" class="rounded-full border border-slate-700 px-3 py-1 text-xs font-medium text-slate-300">Idle</span>
+          </div>
+          <div class="grid grid-cols-2 gap-3">
+            <div class="rounded-lg border border-slate-800 bg-slate-950 p-3">
+              <div class="text-sm text-slate-400">Category</div>
+              <div id="category-value" class="mt-1 text-lg font-semibold">-</div>
+            </div>
+            <div class="rounded-lg border border-slate-800 bg-slate-950 p-3">
+              <div class="text-sm text-slate-400">Difficulty</div>
+              <div id="difficulty-value" class="mt-1 text-lg font-semibold">-</div>
+            </div>
+          </div>
+          <div id="reason-value" class="mt-3 min-h-10 text-sm leading-5 text-slate-400">Waiting for input.</div>
+        </section>
+
+        <section class="panel p-4">
+          <h2 class="mb-4 text-lg font-semibold">Agents</h2>
+          <div class="grid gap-3">
+            <article id="agent-detector" class="agent-card panel p-3">
+              <div class="flex items-center gap-3">
+                <i data-lucide="radar" class="h-5 w-5 text-blue-300"></i>
+                <div>
+                  <h3 class="font-semibold">Detector</h3>
+                  <p class="text-sm text-slate-400">Idle</p>
+                </div>
+              </div>
+            </article>
+            <article id="agent-solver" class="agent-card panel p-3">
+              <div class="flex items-center gap-3">
+                <i data-lucide="brain" class="h-5 w-5 text-blue-300"></i>
+                <div>
+                  <h3 class="font-semibold">Solver</h3>
+                  <p class="text-sm text-slate-400">Idle</p>
+                </div>
+              </div>
+            </article>
+            <article id="agent-grader" class="agent-card panel p-3">
+              <div class="flex items-center gap-3">
+                <i data-lucide="chart-bar" class="h-5 w-5 text-amber-300"></i>
+                <div>
+                  <h3 class="font-semibold">Grader</h3>
+                  <p class="text-sm text-slate-400">Idle</p>
+                </div>
+              </div>
+            </article>
+            <article id="agent-critic" class="agent-card panel p-3">
+              <div class="flex items-center gap-3">
+                <i data-lucide="search-check" class="h-5 w-5 text-rose-300"></i>
+                <div>
+                  <h3 class="font-semibold">Critic</h3>
+                  <p class="text-sm text-slate-400">Idle</p>
+                </div>
+              </div>
+            </article>
+            <article id="agent-memory" class="agent-card panel p-3">
+              <div class="flex items-center gap-3">
+                <i data-lucide="database" class="h-5 w-5 text-emerald-300"></i>
+                <div>
+                  <h3 class="font-semibold">Memory</h3>
+                  <p class="text-sm text-slate-400">Idle</p>
+                </div>
+              </div>
+            </article>
+          </div>
+        </section>
+      </div>
+
+      <div class="flex flex-col gap-5">
+        <section class="panel p-4">
+          <div class="mb-4 flex items-center justify-between gap-3">
+            <div>
+              <h2 class="text-lg font-semibold">Run Timeline</h2>
+              <div id="status-line" class="mt-1 text-sm text-slate-400">Ready</div>
+            </div>
+            <div class="min-w-28 text-right">
+              <div id="score-value" class="text-2xl font-semibold">0.000</div>
+              <div class="score-track mt-2">
+                <div id="score-fill" class="score-fill"></div>
+              </div>
+            </div>
+          </div>
+          <div id="timeline" class="space-y-4 text-sm text-slate-300">
+            <div class="rounded-lg border border-dashed border-slate-700 p-4 text-slate-500">No run yet.</div>
+          </div>
+        </section>
+
+        <section class="panel flex min-h-[28rem] flex-1 flex-col p-4">
+          <div class="mb-4 flex items-center justify-between">
+            <h2 class="text-lg font-semibold">Output</h2>
+            <div id="output-meta" class="text-sm text-slate-400">No result</div>
+          </div>
+          <pre class="code-output flex-1 bg-slate-950 p-4 text-sm leading-6"><code id="solution-code">The final answer will appear here.</code></pre>
+        </section>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const els = {
+      input: document.getElementById('task-input'),
+      run: document.getElementById('solve-btn'),
+      clear: document.getElementById('clear-btn'),
+      copy: document.getElementById('copy-btn'),
+      runState: document.getElementById('run-state'),
+      status: document.getElementById('status-line'),
+      timeline: document.getElementById('timeline'),
+      category: document.getElementById('category-value'),
+      difficulty: document.getElementById('difficulty-value'),
+      reason: document.getElementById('reason-value'),
+      score: document.getElementById('score-value'),
+      scoreFill: document.getElementById('score-fill'),
+      solution: document.getElementById('solution-code'),
+      outputMeta: document.getElementById('output-meta'),
+      statEpisodes: document.getElementById('stat-episodes'),
+      statReward: document.getElementById('stat-reward'),
+      statRules: document.getElementById('stat-rules'),
+      agents: {
+        detector: document.getElementById('agent-detector'),
+        solver: document.getElementById('agent-solver'),
+        grader: document.getElementById('agent-grader'),
+        critic: document.getElementById('agent-critic'),
+        memory: document.getElementById('agent-memory'),
+      },
+    };
+
+    const state = {
+      output: '',
+      started: false,
+    };
+
+    function setRunState(label, tone = 'idle') {
+      const colors = {
+        idle: 'border-slate-700 text-slate-300',
+        active: 'border-blue-400 text-blue-200',
+        success: 'border-emerald-400 text-emerald-200',
+        error: 'border-rose-400 text-rose-200',
+      };
+      els.runState.className = `rounded-full border px-3 py-1 text-xs font-medium ${colors[tone]}`;
+      els.runState.textContent = label;
+    }
+
+    function setAgent(name, status, detail = '', mode = 'active') {
+      const card = els.agents[name];
+      if (!card) return;
+      card.classList.remove('active', 'done', 'error');
+      if (mode) card.classList.add(mode);
+      const p = card.querySelector('p');
+      p.textContent = detail ? `${status} - ${detail}` : status;
+    }
+
+    function resetAgents() {
+      Object.keys(els.agents).forEach((name) => setAgent(name, 'Idle', '', ''));
+    }
+
+    function resetRun() {
+      state.output = '';
+      state.started = true;
+      els.timeline.innerHTML = '';
+      els.solution.textContent = 'Working...';
+      els.outputMeta.textContent = 'Running';
+      els.score.textContent = '0.000';
+      els.scoreFill.style.width = '0%';
+      els.category.textContent = '-';
+      els.difficulty.textContent = '-';
+      els.reason.textContent = 'Classifying query.';
+      els.copy.disabled = true;
+      resetAgents();
+      setRunState('Running', 'active');
+      els.status.textContent = 'Starting run';
+    }
+
+    function addTimeline(title, detail = '', score = null) {
+      const empty = els.timeline.querySelector('.border-dashed');
+      if (empty) empty.remove();
+
+      const item = document.createElement('div');
+      item.className = 'timeline-item';
+      const scoreHtml = typeof score === 'number'
+        ? `<span class="ml-2 rounded border border-slate-700 px-2 py-0.5 text-xs text-slate-300">${score.toFixed(3)}</span>`
+        : '';
+      item.innerHTML = `
+        <div class="flex flex-wrap items-center justify-between gap-2">
+          <div class="font-semibold text-white">${escapeHtml(title)}${scoreHtml}</div>
+          <div class="text-xs text-slate-500">${new Date().toLocaleTimeString()}</div>
+        </div>
+        ${detail ? `<div class="mt-1 leading-5 text-slate-400">${escapeHtml(detail)}</div>` : ''}
+      `;
+      els.timeline.prepend(item);
+    }
+
+    function updateScore(value) {
+      const score = Math.max(0, Math.min(1, Number(value) || 0));
+      els.score.textContent = score.toFixed(3);
+      els.scoreFill.style.width = `${score * 100}%`;
+    }
+
+    function escapeHtml(value) {
+      return String(value ?? '')
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;')
+        .replaceAll("'", '&#039;');
+    }
+
+    function handleEvent(event, data) {
+      if (event === 'status') {
+        els.status.textContent = data.message || data.phase || 'Working';
+        if (data.phase === 'detecting') setAgent('detector', 'Working', data.detail || '');
+        if (data.phase === 'solving') {
+          setAgent('detector', 'Complete', 'Category selected', 'done');
+          setAgent('solver', 'Working', data.detail || '');
+        }
+        addTimeline(data.message || 'Status', data.detail || '');
+        return;
+      }
+
+      if (event === 'detection') {
+        els.category.textContent = data.category || '-';
+        els.difficulty.textContent = data.difficulty || '-';
+        els.reason.textContent = data.reason || 'Detected automatically.';
+        setAgent('detector', 'Complete', `${data.category} / ${data.difficulty}`, 'done');
+        addTimeline('Classification complete', `${data.category} / ${data.difficulty}`);
+        return;
+      }
+
+      if (event === 'agent') {
+        const agent = data.agent === 'system' ? 'memory' : data.agent;
+        const mode = data.status === 'success' ? 'done' : 'active';
+        setAgent(agent, data.message || data.status || 'Working', data.detail || '', mode);
+        els.status.textContent = data.message || data.status || 'Working';
+        addTimeline(data.message || `${agent} update`, data.detail || '');
+        return;
+      }
+
+      if (event === 'step_result') {
+        updateScore(data.score);
+        setAgent('grader', data.success ? 'Accepted' : 'Needs improvement', data.feedback || '', data.success ? 'done' : 'active');
+        addTimeline(`Attempt ${data.step} graded`, data.feedback || '', Number(data.score));
+        return;
+      }
+
+      if (event === 'critic') {
+        setAgent('critic', 'Feedback ready', data.feedback || '', 'done');
+        addTimeline(`Critic feedback for attempt ${data.step}`, data.priorityFix || data.feedback || '');
+        return;
+      }
+
+      if (event === 'complete') {
+        state.output = data.solution || 'No response returned.';
+        els.solution.textContent = state.output;
+        if (window.hljs) hljs.highlightElement(els.solution);
+        updateScore(data.totalReward);
+        setAgent('solver', 'Complete', `${data.steps} attempt${data.steps === 1 ? '' : 's'}`, 'done');
+        setAgent('grader', data.success ? 'Accepted' : 'Best effort', `Reward ${Number(data.totalReward || 0).toFixed(3)}`, data.success ? 'done' : 'active');
+        setAgent('memory', 'Saved', `${data.memory?.learnedRules || 0} rules`, 'done');
+        setRunState(data.success ? 'Complete' : 'Finished', data.success ? 'success' : 'active');
+        els.status.textContent = 'Run complete';
+        els.outputMeta.textContent = `${data.category} / ${data.difficulty} / ${data.steps} attempt${data.steps === 1 ? '' : 's'}`;
+        els.copy.disabled = false;
+        addTimeline('Final output ready', `Saved to memory. Duration ${Math.round((data.duration || 0) / 1000)}s`, Number(data.totalReward || 0));
+        loadStats();
+        return;
+      }
+
+      if (event === 'error') {
+        setRunState('Error', 'error');
+        els.status.textContent = data.message || data.error || 'Run failed';
+        setAgent('solver', 'Error', data.message || '', 'error');
+        addTimeline('Run failed', data.message || data.error || '');
+      }
+    }
+
+    async function solveTask() {
+      const task = els.input.value.trim();
+      if (!task) {
+        els.input.focus();
+        return;
+      }
+
+      resetRun();
+      els.run.disabled = true;
+
+      try {
+        const response = await fetch('/api/solve-stream', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ task }),
+        });
+
+        if (!response.ok || !response.body) {
+          throw new Error(`Request failed with status ${response.status}`);
+        }
+
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+
+        while (true) {
+          const { value, done } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+          const chunks = buffer.split('\n\n');
+          buffer = chunks.pop() || '';
+
+          for (const chunk of chunks) {
+            const lines = chunk.split('\n');
+            const eventLine = lines.find((line) => line.startsWith('event:'));
+            const dataLine = lines.find((line) => line.startsWith('data:'));
+            if (!eventLine || !dataLine) continue;
+            const event = eventLine.replace('event:', '').trim();
+            const data = JSON.parse(dataLine.replace('data:', '').trim());
+            handleEvent(event, data);
+          }
+        }
+      } catch (error) {
+        handleEvent('error', { message: error.message });
+      } finally {
+        els.run.disabled = false;
+      }
+    }
+
+    async function loadStats() {
+      try {
+        const res = await fetch('/api/stats');
+        if (!res.ok) return;
+        const stats = await res.json();
+        els.statEpisodes.textContent = stats.totalEpisodes ?? 0;
+        els.statReward.textContent = Number(stats.avgReward || 0).toFixed(3);
+        els.statRules.textContent = stats.learnedRules ?? 0;
+      } catch (_) {}
+    }
+
+    els.run.addEventListener('click', solveTask);
+    els.input.addEventListener('keydown', (event) => {
+      if ((event.metaKey || event.ctrlKey) && event.key === 'Enter') solveTask();
+    });
+    els.clear.addEventListener('click', () => {
+      els.input.value = '';
+      els.input.focus();
+    });
+    els.copy.addEventListener('click', async () => {
+      if (!state.output) return;
+      await navigator.clipboard.writeText(state.output);
+      els.outputMeta.textContent = 'Copied';
+      setTimeout(() => {
+        if (state.output) els.outputMeta.textContent = 'Ready';
+      }, 1200);
+    });
+
+    if (window.lucide) lucide.createIcons();
+    loadStats();
+  </script>
+</body>
+</html> -->
+
+<!-- 
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Self-Improving RL - Complete Flow Visualization</title>
+  <title>Agent Workspace</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,300&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
   <style>
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #f5f4f2;
+      --surface: #ffffff;
+      --surface-2: #f9f8f7;
+      --border: #e4e2de;
+      --border-2: #d0cec9;
+      --text: #1a1917;
+      --text-2: #6b6862;
+      --text-3: #a09d98;
+      --blue: #2563eb;
+      --blue-light: #eff6ff;
+      --blue-mid: #bfdbfe;
+      --green: #16a34a;
+      --green-light: #f0fdf4;
+      --green-mid: #bbf7d0;
+      --amber: #d97706;
+      --amber-light: #fffbeb;
+      --red: #dc2626;
+      --red-light: #fef2f2;
+      --purple: #7c3aed;
+      --purple-light: #f5f3ff;
+      --radius: 10px;
+      --radius-sm: 6px;
+      --shadow: 0 1px 3px rgba(0,0,0,.06), 0 1px 2px rgba(0,0,0,.04);
+      --shadow-md: 0 4px 12px rgba(0,0,0,.08), 0 2px 4px rgba(0,0,0,.04);
     }
 
     body {
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      background: linear-gradient(135deg, #0a0e27 0%, #1a1a3e 100%);
-      color: #e0e0e0;
-      overflow-x: hidden;
-    }
-
-    .wrapper {
-      display: flex;
-      flex-direction: column;
+      font-family: 'DM Sans', sans-serif;
+      background: var(--bg);
+      color: var(--text);
       height: 100vh;
-    }
-
-    /* HEADER - INPUT */
-    .header {
-      background: #0f3460;
-      padding: 20px;
-      border-bottom: 2px solid #e94560;
-      box-shadow: 0 4px 15px rgba(0,0,0,0.5);
-    }
-
-    .input-section {
-      max-width: 1400px;
-      margin: 0 auto;
-      display: grid;
-      grid-template-columns: 1fr 1fr 150px 150px 120px;
-      gap: 15px;
-      align-items: end;
-    }
-
-    .input-group {
+      overflow: hidden;
       display: flex;
       flex-direction: column;
+      font-size: 14px;
     }
 
-    .input-group label {
-      font-size: 11px;
-      color: #64b5f6;
+    /* ── TOP BAR ── */
+    #topbar {
+      height: 52px;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      padding: 0 18px;
+      gap: 14px;
+      flex-shrink: 0;
+      z-index: 100;
+    }
+    #topbar-brand {
+      font-size: 15px;
       font-weight: 600;
-      text-transform: uppercase;
-      margin-bottom: 5px;
-      letter-spacing: 1px;
+      letter-spacing: -.02em;
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      gap: 8px;
     }
-
-    .input-group input,
-    .input-group textarea,
-    .input-group select {
-      padding: 10px;
-      background: #16213e;
-      border: 1px solid #e94560;
-      color: #e0e0e0;
-      border-radius: 4px;
+    #topbar-brand .dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: var(--blue);
+    }
+    #topbar-sep { width: 1px; height: 20px; background: var(--border); }
+    #topbar-stats {
+      display: flex;
+      gap: 20px;
+      margin-left: 4px;
+    }
+    .tstat {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12.5px;
+      color: var(--text-2);
+    }
+    .tstat strong { color: var(--text); font-weight: 500; }
+    #topbar-right { margin-left: auto; display: flex; gap: 8px; align-items: center; }
+    .tb-btn {
+      height: 32px;
+      padding: 0 14px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border);
+      background: var(--surface);
+      font: inherit;
       font-size: 13px;
-      font-family: 'Segoe UI', sans-serif;
-    }
-
-    .input-group textarea {
-      resize: none;
-      height: 40px;
-    }
-
-    .input-group input:focus,
-    .input-group textarea:focus,
-    .input-group select:focus {
-      outline: none;
-      border-color: #64b5f6;
-      box-shadow: 0 0 8px rgba(100, 181, 246, 0.3);
-    }
-
-    .button-group {
-      display: flex;
-      gap: 10px;
-    }
-
-    button {
-      padding: 10px 15px;
-      background: #e94560;
-      color: white;
-      border: none;
-      border-radius: 4px;
+      font-weight: 500;
+      color: var(--text);
       cursor: pointer;
-      font-weight: 600;
-      font-size: 12px;
-      text-transform: uppercase;
-      transition: all 0.3s ease;
-    }
-
-    button:hover {
-      background: #ff6b7a;
-    }
-
-    button:disabled {
-      opacity: 0.5;
-      cursor: not-allowed;
-    }
-
-    button.secondary {
-      background: #64b5f6;
-    }
-
-    button.secondary:hover {
-      background: #90caf9;
-    }
-
-    /* MAIN CONTENT */
-    .main {
-      flex: 1;
+      transition: background .12s, border-color .12s;
       display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .tb-btn:hover { background: var(--surface-2); border-color: var(--border-2); }
+    .tb-btn.primary {
+      background: var(--blue);
+      color: #fff;
+      border-color: var(--blue);
+    }
+    .tb-btn.primary:hover { background: #1d4ed8; border-color: #1d4ed8; }
+    .tb-btn:disabled { opacity: .5; cursor: not-allowed; }
+
+    /* ── MAIN LAYOUT ── */
+    #layout {
+      display: flex;
+      flex: 1;
       overflow: hidden;
     }
 
-    /* LEFT SIDEBAR - MEMORY */
-    .sidebar {
-      width: 280px;
-      background: #0a0e27;
-      border-right: 1px solid #e94560;
-      padding: 20px;
-      overflow-y: auto;
-    }
-
-    .sidebar h3 {
-      color: #64b5f6;
-      font-size: 12px;
-      text-transform: uppercase;
-      margin-bottom: 15px;
-      letter-spacing: 1px;
-    }
-
-    .stats-box {
-      background: #16213e;
-      padding: 12px;
-      border-radius: 6px;
-      margin-bottom: 12px;
-      border-left: 3px solid #e94560;
-    }
-
-    .stat-row {
-      display: flex;
-      justify-content: space-between;
-      font-size: 12px;
-      margin-bottom: 5px;
-    }
-
-    .stat-label {
-      color: #b0bec5;
-    }
-
-    .stat-value {
-      color: #4caf50;
-      font-weight: 600;
-    }
-
-    .rule-item {
-      background: #0f3460;
-      padding: 8px;
-      border-radius: 4px;
-      margin-bottom: 6px;
-      font-size: 11px;
-      border-left: 2px solid #4caf50;
-      color: #b0bec5;
-    }
-
-    /* CENTER - FLOW VISUALIZATION */
-    .flow-container {
-      flex: 1;
-      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
-      padding: 30px;
-      overflow-y: auto;
+    /* ── LEFT SIDEBAR ── */
+    #sidebar {
+      width: 210px;
+      min-width: 210px;
+      background: var(--surface);
+      border-right: 1px solid var(--border);
       display: flex;
       flex-direction: column;
+      overflow-y: auto;
     }
-
-    .flow-title {
-      color: #e94560;
-      font-size: 16px;
-      margin-bottom: 20px;
-      text-transform: uppercase;
-      letter-spacing: 1px;
-      text-align: center;
+    .sb-section {
+      padding: 14px 14px 10px;
+      border-bottom: 1px solid var(--border);
     }
-
-    /* FLOW DIAGRAM */
-    .flow-diagram {
-      display: grid;
-      grid-template-columns: repeat(5, 1fr);
-      gap: 15px;
-      margin-bottom: 30px;
-    }
-
-    .flow-node {
-      background: #0f3460;
-      border: 2px solid #e94560;
-      border-radius: 8px;
-      padding: 15px;
-      text-align: center;
-      position: relative;
-      transition: all 0.3s ease;
-    }
-
-    .flow-node.active {
-      border-color: #64b5f6;
-      box-shadow: 0 0 20px rgba(100, 181, 246, 0.5);
-      background: #16213e;
-    }
-
-    .flow-node.complete {
-      border-color: #4caf50;
-      background: rgba(76, 175, 80, 0.1);
-    }
-
-    .flow-node-icon {
-      font-size: 32px;
-      margin-bottom: 8px;
-    }
-
-    .flow-node-label {
+    .sb-title {
       font-size: 11px;
-      color: #64b5f6;
       font-weight: 600;
       text-transform: uppercase;
-      margin-bottom: 5px;
+      letter-spacing: .07em;
+      color: var(--text-3);
+      margin-bottom: 10px;
     }
+    .palette-item {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      padding: 8px 10px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      cursor: grab;
+      background: var(--surface);
+      font-size: 13px;
+      font-weight: 500;
+      margin-bottom: 5px;
+      transition: border-color .12s, box-shadow .12s, background .12s;
+      user-select: none;
+    }
+    .palette-item:hover {
+      border-color: var(--border-2);
+      background: var(--surface-2);
+      box-shadow: var(--shadow);
+    }
+    .palette-item:last-child { margin-bottom: 0; }
+    .p-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
 
-    .flow-node-status {
-      font-size: 11px;
-      color: #b0bec5;
-      height: 30px;
+    /* task input section */
+    .sb-textarea {
+      width: 100%;
+      min-height: 90px;
+      resize: vertical;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      background: var(--surface-2);
+      padding: 9px 10px;
+      font: inherit;
+      font-size: 13px;
+      color: var(--text);
+      outline: none;
+      transition: border-color .15s;
+      line-height: 1.5;
+    }
+    .sb-textarea:focus { border-color: var(--blue); background: var(--surface); }
+    .sb-textarea::placeholder { color: var(--text-3); }
+
+    .sb-run-row { display: flex; gap: 7px; margin-top: 9px; }
+    .sb-run { flex: 1; height: 33px; background: var(--blue); color: #fff; border: 1px solid var(--blue); border-radius: var(--radius-sm); font: inherit; font-size: 13px; font-weight: 500; cursor: pointer; transition: background .12s; }
+    .sb-run:hover { background: #1d4ed8; }
+    .sb-run:disabled { opacity: .5; cursor: not-allowed; }
+    .icon-btn-sm {
+      width: 33px; height: 33px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      background: var(--surface);
+      cursor: pointer;
       display: flex;
       align-items: center;
       justify-content: center;
+      font-size: 14px;
+      color: var(--text-2);
+      transition: background .12s, border-color .12s;
+      flex-shrink: 0;
     }
+    .icon-btn-sm:hover { background: var(--surface-2); border-color: var(--border-2); }
+    .icon-btn-sm:disabled { opacity: .5; cursor: not-allowed; }
 
-    .flow-connector {
-      position: absolute;
-      top: 50%;
-      right: -15px;
-      width: 15px;
-      height: 2px;
-      background: #e94560;
-      transform: translateY(-50%);
+    /* classification */
+    .cls-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; margin-bottom: 9px; }
+    .cls-cell {
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 8px 10px;
     }
+    .cls-label { font-size: 11px; color: var(--text-3); margin-bottom: 2px; }
+    .cls-val { font-size: 14px; font-weight: 500; }
+    .cls-reason { font-size: 12px; color: var(--text-2); line-height: 1.5; }
 
-    .flow-connector.active {
-      background: #64b5f6;
-      box-shadow: 0 0 10px #64b5f6;
-    }
-
-    /* DETAILS SECTION */
-    .details-section {
-      background: #0f3460;
-      border-radius: 8px;
-      padding: 20px;
-      margin-bottom: 20px;
-      border-left: 4px solid #e94560;
-    }
-
-    .details-title {
-      color: #64b5f6;
-      font-size: 12px;
-      text-transform: uppercase;
-      margin-bottom: 10px;
-      font-weight: 600;
-    }
-
-    .details-content {
-      font-size: 13px;
-      color: #b0bec5;
-      line-height: 1.6;
-    }
-
-    .score-display {
-      font-size: 36px;
-      color: #e94560;
-      font-weight: 700;
-      text-align: center;
-      margin: 10px 0;
-    }
-
-    .response-box {
-      background: #16213e;
-      border-left: 3px solid #64b5f6;
-      padding: 12px;
-      border-radius: 4px;
-      font-family: 'Courier New', monospace;
-      font-size: 12px;
-      max-height: 150px;
-      overflow-y: auto;
-      margin-top: 10px;
-    }
-
-    /* MEMORY DISPLAY */
-    .memory-section {
-      background: #0f3460;
-      border: 2px solid #4caf50;
-      border-radius: 8px;
-      padding: 15px;
-      margin-bottom: 20px;
-    }
-
-    .memory-section h4 {
-      color: #4caf50;
-      font-size: 11px;
-      text-transform: uppercase;
-      margin-bottom: 10px;
-    }
-
-    .memory-rule {
-      background: #16213e;
-      padding: 8px;
-      border-radius: 4px;
+    /* agent cards */
+    .agent-card {
+      display: flex;
+      align-items: flex-start;
+      gap: 9px;
+      padding: 9px 10px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
       margin-bottom: 6px;
-      font-size: 12px;
-      border-left: 2px solid #4caf50;
-      color: #a5d6a7;
+      background: var(--surface);
+      transition: border-color .15s, background .15s;
     }
+    .agent-card:last-child { margin-bottom: 0; }
+    .agent-card.running { border-color: var(--blue-mid); background: var(--blue-light); }
+    .agent-card.done { border-color: var(--green-mid); background: var(--green-light); }
+    .agent-card.error { border-color: #fca5a5; background: var(--red-light); }
+    .ac-dot { width: 7px; height: 7px; border-radius: 50%; margin-top: 4px; flex-shrink: 0; }
+    .ac-body { flex: 1; min-width: 0; }
+    .ac-name { font-size: 13px; font-weight: 500; }
+    .ac-status { font-size: 11.5px; color: var(--text-2); margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
-    /* OUTPUT SECTION */
-    .output-section {
-      background: #0f3460;
-      border: 2px solid #4caf50;
-      border-radius: 8px;
-      padding: 20px;
-      margin-bottom: 20px;
+    /* ── CANVAS ── */
+    #canvas-wrap {
+      flex: 1;
+      position: relative;
+      overflow: hidden;
+      background: var(--bg);
     }
-
-    .output-title {
-      color: #4caf50;
-      font-size: 12px;
-      text-transform: uppercase;
-      margin-bottom: 10px;
-      font-weight: 600;
+    #canvas-bg {
+      position: absolute; inset: 0;
+      pointer-events: none;
     }
-
-    .output-content {
-      background: #16213e;
-      padding: 15px;
-      border-radius: 4px;
-      font-size: 13px;
-      color: #b0bec5;
-      line-height: 1.6;
-      max-height: 200px;
-      overflow-y: auto;
+    #connections {
+      position: absolute; inset: 0;
+      width: 100%; height: 100%;
+      pointer-events: none;
+      overflow: visible;
     }
+    #canvas-nodes { position: absolute; inset: 0; }
 
-    .success-badge {
-      display: inline-block;
-      background: #4caf50;
-      color: white;
-      padding: 6px 12px;
+    .agent-node {
+      position: absolute;
+      width: 162px;
+      cursor: grab;
+      user-select: none;
+    }
+    .agent-node:active { cursor: grabbing; }
+    .node-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 11px 13px 10px;
+      transition: border-color .15s, box-shadow .15s;
+    }
+    .agent-node.selected .node-card {
+      border-color: var(--blue);
+      box-shadow: 0 0 0 3px rgba(37,99,235,.12), var(--shadow);
+    }
+    .agent-node.running .node-card { border-color: #93c5fd; box-shadow: 0 0 0 3px rgba(37,99,235,.08); }
+    .agent-node.done .node-card { border-color: #86efac; }
+    .agent-node.error .node-card { border-color: #fca5a5; }
+
+    .node-header { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+    .node-type-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+    .node-name { font-size: 13px; font-weight: 600; flex: 1; }
+    .node-badge {
+      font-size: 10px;
+      font-weight: 500;
+      padding: 2px 6px;
       border-radius: 20px;
+      border: 1px solid currentColor;
+      white-space: nowrap;
+    }
+    .badge-idle { color: var(--text-3); border-color: var(--border); }
+    .badge-running { color: var(--blue); border-color: var(--blue-mid); background: var(--blue-light); }
+    .badge-done { color: var(--green); border-color: var(--green-mid); background: var(--green-light); }
+    .badge-error { color: var(--red); border-color: #fca5a5; background: var(--red-light); }
+
+    .node-log {
       font-size: 11px;
-      font-weight: 600;
-      margin-top: 10px;
+      color: var(--text-2);
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 5px 8px;
+      line-height: 1.5;
+      min-height: 28px;
+      word-break: break-word;
+      font-family: 'DM Mono', monospace;
     }
 
-    .error-badge {
-      display: inline-block;
-      background: #e94560;
-      color: white;
-      padding: 6px 12px;
-      border-radius: 20px;
-      font-size: 11px;
-      font-weight: 600;
-      margin-top: 10px;
-    }
-
-    .loading-spinner {
-      display: inline-block;
-      width: 14px;
-      height: 14px;
-      border: 2px solid #64b5f6;
-      border-top: 2px solid transparent;
+    .node-port {
+      position: absolute;
+      width: 11px; height: 11px;
       border-radius: 50%;
-      animation: spin 0.8s linear infinite;
+      border: 1.5px solid var(--border-2);
+      background: var(--surface);
+      cursor: crosshair;
+      transition: border-color .12s, background .12s, transform .12s;
+      z-index: 2;
+    }
+    .node-port:hover { border-color: var(--blue); background: var(--blue-light); transform: scale(1.3); }
+    .port-out { right: -5.5px; top: 50%; transform: translateY(-50%); }
+    .port-out:hover { transform: translateY(-50%) scale(1.3); }
+    .port-in  { left: -5.5px; top: 50%; transform: translateY(-50%); }
+    .port-in:hover  { transform: translateY(-50%) scale(1.3); }
+
+    /* canvas toolbar */
+    #canvas-toolbar {
+      position: absolute;
+      top: 12px; right: 12px;
+      display: flex;
+      gap: 6px;
+      z-index: 20;
     }
 
-    @keyframes spin {
-      to { transform: rotate(360deg); }
+    /* ── RIGHT PANEL ── */
+    #right-panel {
+      width: 260px;
+      min-width: 260px;
+      background: var(--surface);
+      border-left: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      transform: translateX(260px);
+      transition: transform .2s ease;
     }
-
-    .empty-state {
+    #right-panel.open { transform: translateX(0); }
+    #rp-header {
+      padding: 12px 14px 10px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    #rp-title { font-size: 14px; font-weight: 600; }
+    #rp-close {
+      width: 26px; height: 26px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      background: var(--surface);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--text-2);
+      font-size: 15px;
+      transition: background .1s;
+    }
+    #rp-close:hover { background: var(--surface-2); }
+    #rp-tabs {
+      display: flex;
+      border-bottom: 1px solid var(--border);
+    }
+    .rp-tab {
+      flex: 1;
+      padding: 9px 0;
+      font-size: 12px;
+      font-weight: 500;
       text-align: center;
-      color: #64b5f6;
-      padding: 60px 20px;
-      opacity: 0.6;
+      cursor: pointer;
+      color: var(--text-2);
+      border: none;
+      background: none;
+      border-bottom: 2px solid transparent;
+      font-family: inherit;
+      transition: color .12s;
     }
+    .rp-tab.active { color: var(--blue); border-bottom-color: var(--blue); }
+    #rp-body { flex: 1; overflow-y: auto; padding: 13px 14px; }
+    .rp-section { margin-bottom: 14px; }
+    .rp-label {
+      font-size: 10.5px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      color: var(--text-3);
+      margin-bottom: 6px;
+    }
+    .rp-value {
+      font-size: 12.5px;
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 8px 10px;
+      color: var(--text);
+      line-height: 1.6;
+      min-height: 36px;
+      font-family: 'DM Mono', monospace;
+      word-break: break-word;
+    }
+    .rp-badge-row { display: flex; align-items: center; gap: 7px; }
+    .memory-rule {
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 9px 10px;
+      margin-bottom: 7px;
+    }
+    .memory-rule:last-child { margin-bottom: 0; }
+    .mr-title { font-size: 12.5px; font-weight: 500; margin-bottom: 3px; line-height: 1.4; }
+    .mr-meta { font-size: 11px; color: var(--text-3); }
 
-    /* Scrollbar */
-    ::-webkit-scrollbar {
-      width: 8px;
+    /* ── BOTTOM TIMELINE ── */
+    #bottom-bar {
+      height: 0;
+      background: var(--surface);
+      border-top: 1px solid var(--border);
+      overflow: hidden;
+      transition: height .2s ease;
+      flex-shrink: 0;
     }
+    #bottom-bar.open { height: 170px; }
+    #bb-header {
+      padding: 9px 16px 8px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid var(--border);
+    }
+    #bb-header-left { display: flex; align-items: center; gap: 10px; }
+    #bb-title { font-size: 13px; font-weight: 600; }
+    #bb-status { font-size: 12px; color: var(--text-2); }
+    #bb-score { font-size: 13px; font-weight: 600; color: var(--blue); }
+    .score-bar { width: 90px; height: 4px; background: var(--border); border-radius: 2px; overflow: hidden; }
+    .score-fill { height: 100%; width: 0%; background: linear-gradient(90deg, var(--blue), #10b981); border-radius: 2px; transition: width .3s ease; }
+    #timeline-list {
+      display: flex;
+      gap: 0;
+      padding: 10px 16px;
+      overflow-x: auto;
+      height: 110px;
+      align-items: flex-start;
+    }
+    #timeline-list::-webkit-scrollbar { height: 4px; }
+    #timeline-list::-webkit-scrollbar-track { background: var(--bg); }
+    #timeline-list::-webkit-scrollbar-thumb { background: var(--border-2); border-radius: 2px; }
+    .tl-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-width: 110px;
+      padding: 0 8px;
+      position: relative;
+    }
+    .tl-item:not(:last-child)::after {
+      content: '';
+      position: absolute;
+      top: 12px;
+      right: -2px;
+      width: 12px;
+      height: 1px;
+      background: var(--border-2);
+    }
+    .tl-dot {
+      width: 11px; height: 11px;
+      border-radius: 50%;
+      background: var(--blue);
+      border: 2px solid var(--surface);
+      box-shadow: 0 0 0 1.5px var(--blue-mid);
+      margin-bottom: 5px;
+      flex-shrink: 0;
+    }
+    .tl-dot.done { background: var(--green); box-shadow: 0 0 0 1.5px var(--green-mid); }
+    .tl-title { font-size: 11.5px; font-weight: 500; text-align: center; line-height: 1.3; margin-bottom: 2px; }
+    .tl-detail { font-size: 10.5px; color: var(--text-3); text-align: center; line-height: 1.3; }
+    .tl-time { font-size: 10px; color: var(--text-3); margin-top: 3px; font-family: 'DM Mono', monospace; }
 
-    ::-webkit-scrollbar-track {
-      background: #0f3460;
+    /* ── OUTPUT PANEL ── */
+    #output-wrap {
+      flex: 1;
+      overflow: hidden;
     }
+    /* pulse animation */
+    @keyframes pulse { 0%,100%{opacity:1}50%{opacity:.35} }
+    .pulse { animation: pulse .8s ease-in-out infinite; }
+    /* connection animation */
+    @keyframes flow { to { stroke-dashoffset: -18; } }
+    .flow-line { stroke-dasharray: 5 4; animation: flow .6s linear infinite; }
 
-    ::-webkit-scrollbar-thumb {
-      background: #e94560;
-      border-radius: 4px;
-    }
+    .conn-label { font-size: 10px; fill: var(--text-3); font-family: 'DM Sans', sans-serif; }
 
-    ::-webkit-scrollbar-thumb:hover {
-      background: #ff6b7a;
+    /* empty state */
+    .canvas-hint {
+      position: absolute;
+      top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      text-align: center;
+      pointer-events: none;
     }
+    .canvas-hint-title { font-size: 15px; font-weight: 500; color: var(--text-2); margin-bottom: 6px; }
+    .canvas-hint-sub { font-size: 13px; color: var(--text-3); line-height: 1.6; }
   </style>
 </head>
 <body>
-  <div class="wrapper">
-    <!-- HEADER: Input -->
-    <div class="header">
-      <div class="input-section">
-        <div class="input-group">
-          <label>Task Title *</label>
-          <input type="text" id="title" placeholder="e.g., Write binary search">
-        </div>
-        <div class="input-group">
-          <label>Task Description *</label>
-          <textarea id="prompt" placeholder="Describe the task..."></textarea>
-        </div>
-        <div class="input-group">
-          <label>Category</label>
-          <select id="category">
-            <option value="coding">Coding</option>
-            <option value="math">Math</option>
-            <option value="reasoning">Reasoning</option>
-            <option value="writing">Writing</option>
-            <option value="analysis">Analysis</option>
-          </select>
-        </div>
-        <div class="input-group">
-          <label>Difficulty</label>
-          <select id="difficulty">
-            <option value="easy">Easy</option>
-            <option value="medium" selected>Medium</option>
-            <option value="hard">Hard</option>
-          </select>
-        </div>
-        <div class="button-group">
-          <button id="submitBtn" onclick="submitTask()">Submit</button>
-          <button class="secondary" onclick="resetSession()">Reset</button>
-        </div>
+
+
+<div id="topbar">
+  <div id="topbar-brand">
+    <span class="dot"></span>
+    Agent Workspace
+  </div>
+  <div id="topbar-sep"></div>
+  <div id="topbar-stats">
+    <div class="tstat">Episodes <strong id="stat-episodes">0</strong></div>
+    <div class="tstat">Avg reward <strong id="stat-reward">0.000</strong></div>
+    <div class="tstat">Rules <strong id="stat-rules">0</strong></div>
+    <div class="tstat" id="run-state-wrap" style="display:none">
+      <span id="run-state-dot" style="width:7px;height:7px;border-radius:50%;background:var(--blue);display:inline-block"></span>
+      <strong id="run-state-label">Running</strong>
+    </div>
+  </div>
+  <div id="topbar-right">
+    <button class="tb-btn" onclick="addExample()">Load example</button>
+    <button class="tb-btn" onclick="toggleTimeline()">Timeline</button>
+    <button class="tb-btn" onclick="clearCanvas()">Clear</button>
+    <button class="tb-btn primary" id="main-run-btn" onclick="runWorkflow()">▶ Run workflow</button>
+  </div>
+</div>
+
+
+<div id="layout">
+
+  <div id="sidebar">
+  
+    <div class="sb-section">
+      <div class="sb-title">Task</div>
+      <textarea class="sb-textarea" id="task-input" placeholder="Type a task to run through the agents…"></textarea>
+      <div class="sb-run-row">
+        <button class="sb-run" id="solve-btn" onclick="solveTask()">▶ Run</button>
+        <button class="icon-btn-sm" id="copy-btn" title="Copy output" disabled onclick="copyOutput()">⎘</button>
+        <button class="icon-btn-sm" title="Clear" onclick="document.getElementById('task-input').value=''">↺</button>
       </div>
     </div>
 
-    <!-- MAIN CONTENT -->
-    <div class="main">
-      <!-- LEFT SIDEBAR: Memory -->
-      <div class="sidebar">
-        <h3>📊 Memory Stats</h3>
-        <div id="memoryStats">
-          <div class="stat-row">
-            <span class="stat-label">Episodes:</span>
-            <span class="stat-value">0</span>
-          </div>
-          <div class="stat-row">
-            <span class="stat-label">Rules:</span>
-            <span class="stat-value">0</span>
-          </div>
-          <div class="stat-row">
-            <span class="stat-label">Avg Reward:</span>
-            <span class="stat-value">0.00</span>
-          </div>
-        </div>
-
-        <h3 style="margin-top: 20px;">🧠 Learned Rules</h3>
-        <div id="learnedRules">
-          <div style="color: #64b5f6; font-size: 11px; text-align: center; padding: 20px;">
-            No rules learned yet
-          </div>
-        </div>
+   
+    <div class="sb-section">
+      <div class="sb-title">Classification</div>
+      <div class="cls-grid">
+        <div class="cls-cell"><div class="cls-label">Category</div><div class="cls-val" id="category-value">—</div></div>
+        <div class="cls-cell"><div class="cls-label">Difficulty</div><div class="cls-val" id="difficulty-value">—</div></div>
       </div>
+      <div class="cls-reason" id="reason-value">Waiting for input.</div>
+    </div>
 
-      <!-- CENTER: Full Flow Visualization -->
-      <div class="flow-container">
-        <!-- Flow Diagram -->
-        <div class="flow-title">📊 Complete System Flow</div>
-        
-        <div class="flow-diagram">
-          <div class="flow-node" id="node-input">
-            <div class="flow-node-icon">📝</div>
-            <div class="flow-node-label">Input</div>
-            <div class="flow-node-status">Your Task</div>
-          </div>
-
-          <div class="flow-node" id="node-solver">
-            <div class="flow-connector" id="conn-1"></div>
-            <div class="flow-node-icon">🤖</div>
-            <div class="flow-node-label">Solver</div>
-            <div class="flow-node-status">Waiting...</div>
-          </div>
-
-          <div class="flow-node" id="node-grader">
-            <div class="flow-connector" id="conn-2"></div>
-            <div class="flow-node-icon">🏆</div>
-            <div class="flow-node-label">Grader</div>
-            <div class="flow-node-status">Waiting...</div>
-          </div>
-
-          <div class="flow-node" id="node-critic">
-            <div class="flow-connector" id="conn-3"></div>
-            <div class="flow-node-icon">🧠</div>
-            <div class="flow-node-label">Critic</div>
-            <div class="flow-node-status">Waiting...</div>
-          </div>
-
-          <div class="flow-node" id="node-memory">
-            <div class="flow-node-icon">💾</div>
-            <div class="flow-node-label">Memory</div>
-            <div class="flow-node-status">Recording...</div>
-          </div>
-        </div>
-
-        <!-- Details Display -->
-        <div id="detailsContainer"></div>
-
-        <!-- Output -->
-        <div id="outputContainer"></div>
+    
+    <div class="sb-section" style="flex:1">
+      <div class="sb-title">Agents</div>
+      <div id="agent-detector" class="agent-card">
+        <span class="ac-dot" style="background:#3b82f6"></span>
+        <div class="ac-body"><div class="ac-name">Detector</div><div class="ac-status" id="acs-detector">Idle</div></div>
       </div>
+      <div id="agent-solver" class="agent-card">
+        <span class="ac-dot" style="background:#2563eb"></span>
+        <div class="ac-body"><div class="ac-name">Solver</div><div class="ac-status" id="acs-solver">Idle</div></div>
+      </div>
+      <div id="agent-grader" class="agent-card">
+        <span class="ac-dot" style="background:#d97706"></span>
+        <div class="ac-body"><div class="ac-name">Grader</div><div class="ac-status" id="acs-grader">Idle</div></div>
+      </div>
+      <div id="agent-critic" class="agent-card">
+        <span class="ac-dot" style="background:#dc2626"></span>
+        <div class="ac-body"><div class="ac-name">Critic</div><div class="ac-status" id="acs-critic">Idle</div></div>
+      </div>
+      <div id="agent-memory" class="agent-card">
+        <span class="ac-dot" style="background:#16a34a"></span>
+        <div class="ac-body"><div class="ac-name">Memory</div><div class="ac-status" id="acs-memory">Idle</div></div>
+      </div>
+    </div>
+
+    <div class="sb-section">
+      <div class="sb-title">Add node</div>
+      <div class="palette-item" draggable="true" data-type="Planner"><span class="p-dot" style="background:#7c3aed"></span>Planner</div>
+      <div class="palette-item" draggable="true" data-type="Solver"><span class="p-dot" style="background:#2563eb"></span>Solver</div>
+      <div class="palette-item" draggable="true" data-type="Critic"><span class="p-dot" style="background:#dc2626"></span>Critic</div>
+      <div class="palette-item" draggable="true" data-type="Memory"><span class="p-dot" style="background:#16a34a"></span>Memory</div>
+      <div class="palette-item" draggable="true" data-type="Validator"><span class="p-dot" style="background:#d97706"></span>Validator</div>
     </div>
   </div>
 
-  <script>
-    let ws = null;
-    let isProcessing = false;
+  
+  <div id="canvas-wrap">
+    <svg id="canvas-bg" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <pattern id="dot-grid" width="20" height="20" patternUnits="userSpaceOnUse">
+          <circle cx="1" cy="1" r="0.8" fill="#d0cec9" opacity=".6"/>
+        </pattern>
+      </defs>
+      <rect width="100%" height="100%" fill="url(#dot-grid)"/>
+    </svg>
+    <svg id="connections" xmlns="http://www.w3.org/2000/svg"></svg>
+    <div id="canvas-nodes"></div>
 
-    function connectWebSocket() {
-      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-      ws = new WebSocket(`${protocol}//${window.location.host}`);
+    <div id="canvas-toolbar">
+      <button class="tb-btn" onclick="fitView()" title="Fit view">⤢</button>
+    </div>
 
-      ws.onopen = () => {
-        console.log('WebSocket connected');
-        updateMemoryDisplay();
-      };
+    <div class="canvas-hint" id="canvas-hint">
+      <div class="canvas-hint-title">Agent canvas</div>
+      <div class="canvas-hint-sub">Drag agents from the sidebar<br>or click "Load example" to start</div>
+    </div>
+  </div>
 
-      ws.onmessage = (event) => {
-        const message = JSON.parse(event.data);
-        handleMessage(message);
-      };
 
-      ws.onerror = (err) => console.error('WebSocket error:', err);
-      ws.onclose = () => {
-        console.log('Reconnecting...');
-        setTimeout(connectWebSocket, 3000);
-      };
-    }
+  <div id="right-panel">
+    <div id="rp-header">
+      <span id="rp-title">Node detail</span>
+      <button id="rp-close" onclick="closeDetail()">×</button>
+    </div>
+    <div id="rp-tabs">
+      <button class="rp-tab active" onclick="switchTab('output',this)">Output</button>
+      <button class="rp-tab" onclick="switchTab('prompt',this)">Prompt</button>
+      <button class="rp-tab" onclick="switchTab('memory',this)">Memory</button>
+    </div>
+    <div id="rp-body">
+      <p style="font-size:12px;color:var(--text-3)">Select a node to inspect it.</p>
+    </div>
+  </div>
 
-    function handleMessage(message) {
-      const { type, data } = message;
+</div>
 
-      if (type === 'task_received') {
-        displayTaskReceived(data.task);
-      } else if (type === 'step_update') {
-        updateFlowStep(data);
-      } else if (type === 'episode_summary') {
-        displaySummary(data);
-      }
-    }
 
-    function displayTaskReceived(task) {
-      document.getElementById('node-input').classList.add('complete');
-      document.getElementById('detailsContainer').innerHTML = `
-        <div class="details-section">
-          <div class="details-title">📝 Task Input</div>
-          <div class="details-content">
-            <strong>${task.title}</strong><br>
-            <small>[${task.category.toUpperCase()} / ${task.difficulty.toUpperCase()}]</small><br><br>
-            ${task.prompt.substring(0, 200)}...
-          </div>
+<div id="bottom-bar">
+  <div id="bb-header">
+    <div id="bb-header-left">
+      <span id="bb-title">Run timeline</span>
+      <span id="bb-status">Ready</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px">
+      <div class="score-bar"><div class="score-fill" id="score-fill"></div></div>
+      <span id="bb-score">0.000</span>
+      <button class="icon-btn-sm" onclick="toggleTimeline()" style="font-size:12px">✕</button>
+    </div>
+  </div>
+  <div id="timeline-list"><div style="font-size:12px;color:var(--text-3);padding-top:20px;text-align:center;width:100%">No events yet.</div></div>
+</div>
+
+<script>
+const TYPES = {
+  Planner:   {color:'#7c3aed',light:'#f5f3ff'},
+  Solver:    {color:'#2563eb',light:'#eff6ff'},
+  Critic:    {color:'#dc2626',light:'#fef2f2'},
+  Memory:    {color:'#16a34a',light:'#f0fdf4'},
+  Validator: {color:'#d97706',light:'#fffbeb'},
+};
+
+const SAMPLE = {
+  Planner:  {prompt:'Decompose the task into subtasks and delegate.',output:'Decomposed into 3 subtasks: parse, retrieve, answer.',feedback:'Good. Add a validation step.',memory:[{rule:'Break tasks >3 steps into parallel sub-plans',ep:'Episode 12'}]},
+  Solver:   {prompt:'Solve the subtask using chain-of-thought.',output:'Step 1: Parsed query. Step 2: Retrieved context. Step 3: Generated answer.',feedback:'Accurate. Reduce verbosity.',memory:[{rule:'Avoid brute-force for n > 1000',ep:'Episode 45 (failed)'},{rule:'Use vectorized ops for n > 500',ep:'Episode 38'}]},
+  Critic:   {prompt:'Review solver output. Score 0–1, give actionable notes.',output:'Score: 0.82. Correct but lacks concise summary.',feedback:'Summary added to final output.',memory:[{rule:'Penalize outputs >300 tokens without summary',ep:'Episode 29'}]},
+  Memory:   {prompt:'Store learned rules and retrieve past episodes.',output:'Saved 2 rules. Retrieved Episode 38.',feedback:'Consider TTL for stale rules.',memory:[{rule:'Rules older than 100 eps decay in weight',ep:'System rule'},{rule:'Always retrieve top-3 by cosine similarity',ep:'Episode 7'}]},
+  Validator:{prompt:'Validate final answer against task spec.',output:'Validation passed. All 3 criteria satisfied.',feedback:'No issues.',memory:[{rule:'Reject outputs failing >1 check',ep:'Episode 61'}]},
+};
+
+let nodes={}, conns=[], selected=null, dragNode=null, dragOff={x:0,y:0}, drawingConn=null, activeTab='output', running=false;
+const state={output:''};
+
+function uid(){return Math.random().toString(36).slice(2,8)}
+
+// ── PALETTE DRAG ──
+document.querySelectorAll('.palette-item').forEach(el=>{
+  el.addEventListener('dragstart',e=>e.dataTransfer.setData('agentType',el.dataset.type));
+});
+const cw = document.getElementById('canvas-wrap');
+cw.addEventListener('dragover',e=>e.preventDefault());
+cw.addEventListener('drop',e=>{
+  e.preventDefault();
+  const type=e.dataTransfer.getData('agentType');
+  if(!type)return;
+  const r=cw.getBoundingClientRect();
+  addNode(type,e.clientX-r.left-81,e.clientY-r.top-42);
+});
+
+// ── NODES ──
+function addNode(type,x,y,id){
+  id=id||uid();
+  nodes[id]={id,type,x,y,status:'idle',log:'Ready.',data:SAMPLE[type]||{prompt:'',output:'',feedback:'',memory:[]}};
+  renderNode(id);
+  updateHint();
+  return id;
+}
+
+function updateHint(){
+  document.getElementById('canvas-hint').style.display=Object.keys(nodes).length?'none':'block';
+}
+
+function renderNode(id){
+  const n=nodes[id];
+  let el=document.getElementById('nd-'+id);
+  if(!el){
+    el=document.createElement('div');
+    el.className='agent-node';
+    el.id='nd-'+id;
+    el.innerHTML=`
+      <div class="node-port port-in" id="pin-${id}" data-id="${id}"></div>
+      <div class="node-card" id="nc-${id}">
+        <div class="node-header">
+          <span class="node-type-dot" style="background:${TYPES[n.type]?.color||'#888'}"></span>
+          <span class="node-name">${n.type}</span>
+          <span class="node-badge badge-idle" id="nbadge-${id}">Idle</span>
         </div>
-      `;
+        <div class="node-log" id="nlog-${id}">${n.log}</div>
+      </div>
+      <div class="node-port port-out" id="pout-${id}" data-id="${id}"></div>
+    `;
+    document.getElementById('canvas-nodes').appendChild(el);
+    el.querySelector('#nc-'+id).addEventListener('click',e=>{if(!e.defaultPrevented)selectNode(id);});
+    el.querySelector('#pout-'+id).addEventListener('mousedown',e=>{e.stopPropagation();startConn(id,e);});
+    el.querySelector('#pin-'+id).addEventListener('mouseup',e=>{e.stopPropagation();endConn(id);});
+    el.addEventListener('mousedown',e=>{
+      if(e.target.classList.contains('node-port'))return;
+      dragNode=id;
+      const r=el.getBoundingClientRect();
+      dragOff={x:e.clientX-r.left,y:e.clientY-r.top};
+      e.preventDefault();
+    });
+  }
+  el.style.left=n.x+'px';
+  el.style.top=n.y+'px';
+  setNodeStatus(id,n.status,n.log);
+}
+
+function setNodeStatus(id,status,log){
+  const n=nodes[id];if(!n)return;
+  n.status=status; if(log!==undefined)n.log=log;
+  const el=document.getElementById('nd-'+id);if(!el)return;
+  el.className='agent-node'+(status==='running'?' running':status==='done'?' done':status==='error'?' error':'')+(id===selected?' selected':'');
+  const badge=document.getElementById('nbadge-'+id);
+  const labels={idle:'Idle',running:'Running…',done:'Done',error:'Error'};
+  badge.className='node-badge badge-'+status;
+  badge.innerHTML=status==='running'?`<span class="pulse" style="display:inline-block;width:5px;height:5px;border-radius:50%;background:var(--blue);margin-right:3px"></span>Running`:labels[status]||status;
+  document.getElementById('nlog-'+id).textContent=n.log;
+}
+
+document.addEventListener('mousemove',e=>{
+  if(dragNode){
+    const r=cw.getBoundingClientRect();
+    nodes[dragNode].x=e.clientX-r.left-dragOff.x;
+    nodes[dragNode].y=e.clientY-r.top-dragOff.y;
+    document.getElementById('nd-'+dragNode).style.left=nodes[dragNode].x+'px';
+    document.getElementById('nd-'+dragNode).style.top=nodes[dragNode].y+'px';
+    drawConnections();
+  }
+  if(drawingConn){
+    const r=cw.getBoundingClientRect();
+    drawingConn.mx=e.clientX-r.left;
+    drawingConn.my=e.clientY-r.top;
+    drawConnections();
+  }
+});
+document.addEventListener('mouseup',()=>{dragNode=null;if(drawingConn){drawingConn=null;drawConnections();}});
+
+// ── CONNECTIONS ──
+function startConn(fromId,e){
+  const r=cw.getBoundingClientRect();
+  drawingConn={from:fromId,mx:e.clientX-r.left,my:e.clientY-r.top};
+}
+function endConn(toId){
+  if(!drawingConn||drawingConn.from===toId)return;
+  if(!conns.find(c=>c.from===drawingConn.from&&c.to===toId))
+    conns.push({from:drawingConn.from,to:toId,label:'message',active:false});
+  drawingConn=null;
+  drawConnections();
+}
+function nodeOutPt(id){const n=nodes[id];return{x:n.x+162,y:n.y+46};}
+function nodeInPt(id) {const n=nodes[id];return{x:n.x,y:n.y+46};}
+
+function drawConnections(){
+  const svg=document.getElementById('connections');
+  svg.innerHTML=`<defs><marker id="carr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></marker></defs>`;
+
+  conns.forEach((c,i)=>{
+    const a=nodeOutPt(c.from),b=nodeInPt(c.to);
+    const cx=(a.x+b.x)/2;
+    const d=`M${a.x},${a.y} C${cx},${a.y} ${cx},${b.y} ${b.x},${b.y}`;
+    const col=c.active?'#3b82f6':'#c8c5c0';
+    const path=document.createElementNS('http://www.w3.org/2000/svg','path');
+    path.setAttribute('d',d);
+    path.setAttribute('fill','none');
+    path.setAttribute('stroke',col);
+    path.setAttribute('stroke-width',c.active?'1.8':'1.2');
+    if(c.active)path.classList.add('flow-line');
+    path.setAttribute('marker-end','url(#carr)');
+    path.style.cursor='pointer';
+    path.addEventListener('click',()=>{conns.splice(i,1);drawConnections();});
+    svg.appendChild(path);
+
+    // label at midpoint
+    const lbl=document.createElementNS('http://www.w3.org/2000/svg','text');
+    const mx=(a.x+b.x)/2, my=(a.y+b.y)/2-8;
+    lbl.setAttribute('x',mx);lbl.setAttribute('y',my);
+    lbl.setAttribute('text-anchor','middle');
+    lbl.classList.add('conn-label');
+    lbl.textContent=c.label||'message';
+    svg.appendChild(lbl);
+  });
+
+  if(drawingConn){
+    const a=nodeOutPt(drawingConn.from),b={x:drawingConn.mx,y:drawingConn.my};
+    const cx=(a.x+b.x)/2;
+    const p=document.createElementNS('http://www.w3.org/2000/svg','path');
+    p.setAttribute('d',`M${a.x},${a.y} C${cx},${a.y} ${cx},${b.y} ${b.x},${b.y}`);
+    p.setAttribute('fill','none');p.setAttribute('stroke','#93c5fd');p.setAttribute('stroke-width','1.5');p.setAttribute('stroke-dasharray','5 4');
+    svg.appendChild(p);
+  }
+}
+
+// ── SELECTION ──
+function selectNode(id){
+  selected=id;
+  Object.keys(nodes).forEach(nid=>{
+    const el=document.getElementById('nd-'+nid);
+    if(el)el.classList.toggle('selected',nid===id);
+  });
+  openDetail(id);
+}
+
+function openDetail(id){
+  document.getElementById('right-panel').classList.add('open');
+  document.getElementById('rp-title').textContent=nodes[id].type;
+  renderDetailTab(id,activeTab);
+}
+
+function closeDetail(){
+  document.getElementById('right-panel').classList.remove('open');
+  selected=null;
+  document.querySelectorAll('.agent-node').forEach(el=>el.classList.remove('selected'));
+}
+
+function switchTab(tab,btn){
+  activeTab=tab;
+  document.querySelectorAll('.rp-tab').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  if(selected)renderDetailTab(selected,tab);
+}
+
+function renderDetailTab(id,tab){
+  const n=nodes[id],d=n.data||{};
+  const body=document.getElementById('rp-body');
+  const badge=`<div class="rp-section"><div class="rp-label">Status</div><div class="rp-badge-row"><span class="node-badge badge-${n.status}">${n.status}</span></div></div>`;
+
+  if(tab==='output'){
+    body.innerHTML=badge+
+      `<div class="rp-section"><div class="rp-label">Output</div><div class="rp-value">${esc(d.output||'No output yet.')}</div></div>`+
+      `<div class="rp-section"><div class="rp-label">Critic feedback</div><div class="rp-value">${esc(d.feedback||'—')}</div></div>`;
+  } else if(tab==='prompt'){
+    body.innerHTML=badge+
+      `<div class="rp-section"><div class="rp-label">System prompt</div><div class="rp-value">${esc(d.prompt||'—')}</div></div>`;
+  } else {
+    const rules=(d.memory||[]).map(r=>`<div class="memory-rule"><div class="mr-title">${esc(r.rule)}</div><div class="mr-meta">Learned from: ${esc(r.ep)}</div></div>`).join('');
+    body.innerHTML=badge+`<div class="rp-section"><div class="rp-label">Learned rules</div>${rules||'<div class="rp-value">No rules yet.</div>'}</div>`;
+  }
+}
+
+function esc(v){return String(v??'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;');}
+
+// ── TIMELINE ──
+let timelineOpen=false;
+function toggleTimeline(){
+  timelineOpen=!timelineOpen;
+  document.getElementById('bottom-bar').classList.toggle('open',timelineOpen);
+}
+
+function addTimeline(title,detail,score){
+  const list=document.getElementById('timeline-list');
+  const empty=list.querySelector('div[style]');
+  if(empty&&!empty.id)empty.remove();
+  const item=document.createElement('div');
+  item.className='tl-item';
+  const done=typeof score==='number';
+  item.innerHTML=`
+    <div class="tl-dot${done?' done':''}"></div>
+    <div class="tl-title">${esc(title)}</div>
+    <div class="tl-detail">${detail?esc(detail.slice(0,40)):''}</div>
+    <div class="tl-time">${new Date().toLocaleTimeString(undefined,{hour:'2-digit',minute:'2-digit',second:'2-digit'})}</div>
+  `;
+  list.appendChild(item);
+  list.scrollLeft=9999;
+}
+
+function updateScore(val){
+  const s=Math.max(0,Math.min(1,Number(val)||0));
+  document.getElementById('bb-score').textContent=s.toFixed(3);
+  document.getElementById('score-fill').style.width=(s*100)+'%';
+}
+
+// ── SIDEBAR AGENT STATUS ──
+function setSidebarAgent(name,status,detail){
+  const card=document.getElementById('agent-'+name);
+  if(!card)return;
+  card.classList.remove('running','done','error');
+  if(status==='running')card.classList.add('running');
+  else if(status==='done')card.classList.add('done');
+  else if(status==='error')card.classList.add('error');
+  const st=card.querySelector('#acs-'+name);
+  if(st)st.textContent=detail||status;
+}
+function resetSidebar(){
+  ['detector','solver','grader','critic','memory'].forEach(n=>setSidebarAgent(n,'idle','Idle'));
+}
+
+// ── WORKFLOW RUN ──
+function topoSort(){
+  const ids=Object.keys(nodes);
+  const deg={};ids.forEach(id=>deg[id]=0);
+  conns.forEach(c=>{if(deg[c.to]!==undefined)deg[c.to]++;});
+  const q=ids.filter(id=>deg[id]===0),res=[];
+  while(q.length){
+    const id=q.shift();res.push(id);
+    conns.filter(c=>c.from===id).forEach(c=>{deg[c.to]--;if(deg[c.to]===0)q.push(c.to);});
+  }
+  return res.length===ids.length?res:ids;
+}
+function sleep(ms){return new Promise(r=>setTimeout(r,ms));}
+
+async function runWorkflow(){
+  if(running)return;
+  if(!Object.keys(nodes).length){alert('Add some agents first.');return;}
+  running=true;
+  conns.forEach(c=>c.active=false);
+  Object.keys(nodes).forEach(id=>setNodeStatus(id,'idle','Waiting…'));
+  drawConnections();
+  setRunState('Running');
+  if(!timelineOpen)toggleTimeline();
+  document.getElementById('bb-status').textContent='Running';
+
+  const order=topoSort();
+  for(let i=0;i<order.length;i++){
+    const id=order[i];
+    setNodeStatus(id,'running','Processing…');
+    conns.filter(c=>c.to===id).forEach(c=>{c.active=true;});
+    drawConnections();
+    addTimeline(nodes[id].type+' started','');
+    await sleep(500+Math.random()*500);
+    const log=nodes[id].data.output?.slice(0,55)+'…'||'Done.';
+    setNodeStatus(id,'done',log);
+    conns.filter(c=>c.to===id).forEach(c=>c.active=false);
+    drawConnections();
+    const reward=0.6+Math.random()*.38;
+    updateScore(reward);
+    addTimeline(nodes[id].type+' done',log,reward);
+    if(selected===id)renderDetailTab(id,activeTab);
+  }
+  setRunState('Done','done');
+  document.getElementById('bb-status').textContent='Complete';
+  running=false;
+}
+
+function setRunState(label,tone){
+  const wrap=document.getElementById('run-state-wrap');
+  const dot=document.getElementById('run-state-dot');
+  const lbl=document.getElementById('run-state-label');
+  wrap.style.display='flex';
+  lbl.textContent=label;
+  dot.style.background=tone==='done'?'#16a34a':tone==='error'?'#dc2626':'#2563eb';
+}
+
+// ── TASK (SSE-compatible) ──
+function handleEvent(event,data){
+  if(event==='status'){
+    document.getElementById('bb-status').textContent=data.message||'Working';
+    if(data.phase==='detecting')setSidebarAgent('detector','running',data.detail||'');
+    if(data.phase==='solving'){setSidebarAgent('detector','done','Done');setSidebarAgent('solver','running',data.detail||'');}
+    addTimeline(data.message||'Status',data.detail||'');return;
+  }
+  if(event==='detection'){
+    document.getElementById('category-value').textContent=data.category||'—';
+    document.getElementById('difficulty-value').textContent=data.difficulty||'—';
+    document.getElementById('reason-value').textContent=data.reason||'';
+    setSidebarAgent('detector','done',data.category+' / '+data.difficulty);
+    addTimeline('Classified',data.category+' / '+data.difficulty);return;
+  }
+  if(event==='agent'){
+    const a=data.agent==='system'?'memory':data.agent;
+    setSidebarAgent(a,data.status==='success'?'done':'running',data.message||'');
+    addTimeline(data.message||a+' update',data.detail||'');return;
+  }
+  if(event==='step_result'){
+    updateScore(data.score);
+    setSidebarAgent('grader',data.success?'done':'running',data.feedback||'');
+    addTimeline('Attempt '+data.step+' graded',data.feedback||'',Number(data.score));return;
+  }
+  if(event==='critic'){
+    setSidebarAgent('critic','done',data.feedback||'');
+    addTimeline('Critic feedback',data.priorityFix||data.feedback||'');return;
+  }
+  if(event==='complete'){
+    state.output=data.solution||'';
+    updateScore(data.totalReward);
+    setSidebarAgent('solver','done',(data.steps||1)+' attempt(s)');
+    setSidebarAgent('grader',data.success?'done':'running','Reward '+Number(data.totalReward||0).toFixed(3));
+    setSidebarAgent('memory','done',(data.memory?.learnedRules||0)+' rules');
+    document.getElementById('copy-btn').disabled=false;
+    setRunState('Complete','done');
+    document.getElementById('bb-status').textContent='Complete';
+    addTimeline('Run complete','Saved to memory.',Number(data.totalReward||0));return;
+  }
+  if(event==='error'){
+    setRunState('Error','error');
+    document.getElementById('bb-status').textContent=data.message||'Failed';
+    setSidebarAgent('solver','error',data.message||'');
+    addTimeline('Error',data.message||'');
+  }
+}
+
+async function solveTask(){
+  const task=document.getElementById('task-input').value.trim();
+  if(!task){document.getElementById('task-input').focus();return;}
+  state.output='';
+  resetSidebar();
+  document.getElementById('copy-btn').disabled=true;
+  document.getElementById('category-value').textContent='—';
+  document.getElementById('difficulty-value').textContent='—';
+  document.getElementById('reason-value').textContent='Classifying…';
+  document.getElementById('timeline-list').innerHTML='';
+  updateScore(0);
+  if(!timelineOpen)toggleTimeline();
+  setRunState('Running');
+  document.getElementById('solve-btn').disabled=true;
+
+  try{
+    const res=await fetch('/api/solve-stream',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({task})});
+    if(!res.ok||!res.body)throw new Error('Status '+res.status);
+    const reader=res.body.getReader(),dec=new TextDecoder();let buf='';
+    while(true){
+      const{value,done}=await reader.read();if(done)break;
+      buf+=dec.decode(value,{stream:true});
+      const chunks=buf.split('\n\n');buf=chunks.pop()||'';
+      for(const chunk of chunks){
+        const el=chunk.split('\n');
+        const ev=el.find(l=>l.startsWith('event:'));
+        const dl=el.find(l=>l.startsWith('data:'));
+        if(!ev||!dl)continue;
+        handleEvent(ev.replace('event:','').trim(),JSON.parse(dl.replace('data:','').trim()));
+      }
+    }
+  }catch(e){handleEvent('error',{message:e.message});}
+  finally{document.getElementById('solve-btn').disabled=false;}
+}
+
+function copyOutput(){
+  if(!state.output)return;
+  navigator.clipboard.writeText(state.output);
+}
+
+// ── CANVAS UTILS ──
+function clearCanvas(){
+  nodes={};conns=[];selected=null;
+  document.getElementById('canvas-nodes').innerHTML='';
+  document.getElementById('right-panel').classList.remove('open');
+  drawConnections();updateHint();
+}
+
+function fitView(){
+  const ids=Object.keys(nodes);if(!ids.length)return;
+  let minX=Infinity,minY=Infinity;
+  ids.forEach(id=>{minX=Math.min(minX,nodes[id].x);minY=Math.min(minY,nodes[id].y);});
+  const pad=40;
+  ids.forEach(id=>{nodes[id].x-=minX-pad;nodes[id].y-=minY-pad;renderNode(id);});
+  drawConnections();
+}
+
+function addExample(){
+  clearCanvas();
+  const pid=addNode('Planner',40,50);
+  const sid=addNode('Solver',240,180);
+  const cid=addNode('Critic',240,340);
+  const mid=addNode('Memory',460,260);
+  conns.push({from:pid,to:sid,label:'subtasks',active:false});
+  conns.push({from:sid,to:cid,label:'output',active:false});
+  conns.push({from:cid,to:sid,label:'feedback',active:false});
+  conns.push({from:sid,to:mid,label:'reward',active:false});
+  drawConnections();
+}
+
+// ── STATS ──
+async function loadStats(){
+  try{
+    const r=await fetch('/api/stats');if(!r.ok)return;
+    const s=await r.json();
+    document.getElementById('stat-episodes').textContent=s.totalEpisodes??0;
+    document.getElementById('stat-reward').textContent=Number(s.avgReward||0).toFixed(3);
+    document.getElementById('stat-rules').textContent=s.learnedRules??0;
+  }catch(_){}
+}
+
+// Init
+addExample();
+loadStats();
+updateHint();
+</script>
+</body>
+</html> -->
+
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Agent Workspace</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,300&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #f5f4f2;
+      --surface: #ffffff;
+      --surface-2: #f9f8f7;
+      --border: #e4e2de;
+      --border-2: #d0cec9;
+      --text: #1a1917;
+      --text-2: #6b6862;
+      --text-3: #a09d98;
+      --blue: #2563eb;
+      --blue-light: #eff6ff;
+      --blue-mid: #bfdbfe;
+      --green: #16a34a;
+      --green-light: #f0fdf4;
+      --green-mid: #bbf7d0;
+      --amber: #d97706;
+      --amber-light: #fffbeb;
+      --red: #dc2626;
+      --red-light: #fef2f2;
+      --purple: #7c3aed;
+      --purple-light: #f5f3ff;
+      --radius: 10px;
+      --radius-sm: 6px;
+      --shadow: 0 1px 3px rgba(0,0,0,.06), 0 1px 2px rgba(0,0,0,.04);
+      --shadow-md: 0 4px 12px rgba(0,0,0,.08), 0 2px 4px rgba(0,0,0,.04);
+      --shadow-xl: 0 20px 60px rgba(0,0,0,.18), 0 4px 16px rgba(0,0,0,.08);
     }
 
-    function updateFlowStep(data) {
-      const agentMap = {
-        'solver': 'node-solver',
-        'grader': 'node-grader',
-        'critic': 'node-critic',
-        'memory': 'node-memory'
-      };
-
-      const nodeId = agentMap[data.agent];
-      if (!nodeId) return;
-
-      const node = document.getElementById(nodeId);
-      const status = node.querySelector('.flow-node-status');
-
-      if (data.status === 'in-progress') {
-        node.classList.add('active');
-        status.innerHTML = `<span class="loading-spinner"></span> Working...`;
-      } else if (data.status === 'complete') {
-        node.classList.add('complete');
-        node.classList.remove('active');
-        status.textContent = '✓ Complete';
-      }
-
-      // Update connectors
-      const connectorMap = { 'solver': 1, 'grader': 2, 'critic': 3 };
-      if (connectorMap[data.agent]) {
-        const connector = document.getElementById(`conn-${connectorMap[data.agent]}`);
-        if (connector) connector.classList.add('active');
-      }
-
-      // Show details
-      let details = `
-        <div class="details-section">
-          <div class="details-title">${data.agent.toUpperCase()} - Step ${data.stepNum}</div>
-          <div class="details-content">${data.message}</div>
-      `;
-
-      if (data.data) {
-        if (data.data.score !== undefined) {
-          details += `<div class="score-display">${(data.data.score * 100).toFixed(0)}%</div>`;
-        }
-        if (data.data.feedback) {
-          details += `<div style="margin-top: 10px;"><strong>Feedback:</strong><br>${data.data.feedback}</div>`;
-        }
-        if (data.data.response) {
-          details += `<div class="response-box">${data.data.response.substring(0, 300)}</div>`;
-        }
-      }
-
-      details += `</div>`;
-      document.getElementById('detailsContainer').insertAdjacentHTML('beforeend', details);
-
-      // Auto scroll
-      document.querySelector('.flow-container').scrollTop = document.querySelector('.flow-container').scrollHeight;
+    body {
+      font-family: 'DM Sans', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      height: 100vh;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      font-size: 14px;
     }
 
-    function displaySummary(data) {
-      const badge = data.success ? 
-        `<div class="success-badge">✅ SUCCESS - Score: ${(data.reward * 100).toFixed(0)}%</div>` :
-        `<div class="error-badge">❌ INCOMPLETE - Score: ${(data.reward * 100).toFixed(0)}%</div>`;
+    /* ── TOP BAR ── */
+    #topbar {
+      height: 52px;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      padding: 0 18px;
+      gap: 14px;
+      flex-shrink: 0;
+      z-index: 100;
+    }
+    #topbar-brand {
+      font-size: 15px;
+      font-weight: 600;
+      letter-spacing: -.02em;
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    #topbar-brand .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--blue); }
+    #topbar-sep { width: 1px; height: 20px; background: var(--border); }
+    #topbar-stats { display: flex; gap: 20px; margin-left: 4px; }
+    .tstat { display: flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--text-2); }
+    .tstat strong { color: var(--text); font-weight: 500; }
+    #topbar-right { margin-left: auto; display: flex; gap: 8px; align-items: center; }
+    .tb-btn {
+      height: 32px; padding: 0 14px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border);
+      background: var(--surface);
+      font: inherit; font-size: 13px; font-weight: 500;
+      color: var(--text); cursor: pointer;
+      transition: background .12s, border-color .12s;
+      display: flex; align-items: center; gap: 6px;
+    }
+    .tb-btn:hover { background: var(--surface-2); border-color: var(--border-2); }
+    .tb-btn.primary { background: var(--blue); color: #fff; border-color: var(--blue); }
+    .tb-btn.primary:hover { background: #1d4ed8; border-color: #1d4ed8; }
+    .tb-btn:disabled { opacity: .5; cursor: not-allowed; }
 
-      document.getElementById('outputContainer').innerHTML = `
-        <div class="output-section">
-          <div class="output-title">📊 Episode Summary</div>
-          <div class="output-content">
-            <strong>Final Score:</strong> ${(data.reward * 100).toFixed(1)}%<br>
-            <strong>Steps Used:</strong> ${data.stepsUsed}/3<br>
-            <strong>Status:</strong> ${data.success ? 'SUCCESS ✅' : 'NEEDS RETRY ⚠️'}
-            ${badge}
-          </div>
+    /* ── MAIN LAYOUT ── */
+    #layout { display: flex; flex: 1; overflow: hidden; }
+
+    /* ── LEFT SIDEBAR ── */
+    #sidebar {
+      width: 210px; min-width: 210px;
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      display: flex; flex-direction: column;
+      overflow-y: auto;
+    }
+    .sb-section { padding: 14px 14px 10px; border-bottom: 1px solid var(--border); }
+    .sb-title { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .07em; color: var(--text-3); margin-bottom: 10px; }
+    .palette-item {
+      display: flex; align-items: center; gap: 9px;
+      padding: 8px 10px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      cursor: grab;
+      background: var(--surface);
+      font-size: 13px; font-weight: 500;
+      margin-bottom: 5px;
+      transition: border-color .12s, box-shadow .12s, background .12s;
+      user-select: none;
+    }
+    .palette-item:hover { border-color: var(--border-2); background: var(--surface-2); box-shadow: var(--shadow); }
+    .palette-item:last-child { margin-bottom: 0; }
+    .p-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+
+    .sb-textarea {
+      width: 100%; min-height: 90px; resize: vertical;
+      border: 1px solid var(--border); border-radius: var(--radius-sm);
+      background: var(--surface-2);
+      padding: 9px 10px; font: inherit; font-size: 13px; color: var(--text);
+      outline: none; transition: border-color .15s; line-height: 1.5;
+    }
+    .sb-textarea:focus { border-color: var(--blue); background: var(--surface); }
+    .sb-textarea::placeholder { color: var(--text-3); }
+    .sb-run-row { display: flex; gap: 7px; margin-top: 9px; }
+    .sb-run { flex: 1; height: 33px; background: var(--blue); color: #fff; border: 1px solid var(--blue); border-radius: var(--radius-sm); font: inherit; font-size: 13px; font-weight: 500; cursor: pointer; transition: background .12s; }
+    .sb-run:hover { background: #1d4ed8; }
+    .sb-run:disabled { opacity: .5; cursor: not-allowed; }
+    .icon-btn-sm {
+      width: 33px; height: 33px; border: 1px solid var(--border); border-radius: var(--radius-sm);
+      background: var(--surface); cursor: pointer; display: flex; align-items: center; justify-content: center;
+      font-size: 14px; color: var(--text-2); transition: background .12s, border-color .12s; flex-shrink: 0;
+    }
+    .icon-btn-sm:hover { background: var(--surface-2); border-color: var(--border-2); }
+    .icon-btn-sm:disabled { opacity: .5; cursor: not-allowed; }
+
+    .cls-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; margin-bottom: 9px; }
+    .cls-cell { background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 8px 10px; }
+    .cls-label { font-size: 11px; color: var(--text-3); margin-bottom: 2px; }
+    .cls-val { font-size: 14px; font-weight: 500; }
+    .cls-reason { font-size: 12px; color: var(--text-2); line-height: 1.5; }
+
+    .agent-card {
+      display: flex; align-items: flex-start; gap: 9px;
+      padding: 9px 10px; border: 1px solid var(--border);
+      border-radius: var(--radius-sm); margin-bottom: 6px;
+      background: var(--surface); transition: border-color .15s, background .15s;
+    }
+    .agent-card:last-child { margin-bottom: 0; }
+    .agent-card.running { border-color: var(--blue-mid); background: var(--blue-light); }
+    .agent-card.done { border-color: var(--green-mid); background: var(--green-light); }
+    .agent-card.error { border-color: #fca5a5; background: var(--red-light); }
+    .ac-dot { width: 7px; height: 7px; border-radius: 50%; margin-top: 4px; flex-shrink: 0; }
+    .ac-body { flex: 1; min-width: 0; }
+    .ac-name { font-size: 13px; font-weight: 500; }
+    .ac-status { font-size: 11.5px; color: var(--text-2); margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+    /* ── CANVAS ── */
+    #canvas-wrap { flex: 1; position: relative; overflow: hidden; background: var(--bg); }
+    #canvas-bg { position: absolute; inset: 0; pointer-events: none; }
+    #connections { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; overflow: visible; }
+    #canvas-nodes { position: absolute; inset: 0; }
+
+    .agent-node { position: absolute; width: 162px; cursor: grab; user-select: none; }
+    .agent-node:active { cursor: grabbing; }
+    .node-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius); box-shadow: var(--shadow);
+      padding: 11px 13px 10px; transition: border-color .15s, box-shadow .15s;
+    }
+    .agent-node.selected .node-card { border-color: var(--blue); box-shadow: 0 0 0 3px rgba(37,99,235,.12), var(--shadow); }
+    .agent-node.running .node-card { border-color: #93c5fd; box-shadow: 0 0 0 3px rgba(37,99,235,.08); }
+    .agent-node.done .node-card { border-color: #86efac; }
+    .agent-node.error .node-card { border-color: #fca5a5; }
+    .node-header { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+    .node-type-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+    .node-name { font-size: 13px; font-weight: 600; flex: 1; }
+    .node-badge { font-size: 10px; font-weight: 500; padding: 2px 6px; border-radius: 20px; border: 1px solid currentColor; white-space: nowrap; }
+    .badge-idle { color: var(--text-3); border-color: var(--border); }
+    .badge-running { color: var(--blue); border-color: var(--blue-mid); background: var(--blue-light); }
+    .badge-done { color: var(--green); border-color: var(--green-mid); background: var(--green-light); }
+    .badge-error { color: var(--red); border-color: #fca5a5; background: var(--red-light); }
+    .node-log { font-size: 11px; color: var(--text-2); background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 5px 8px; line-height: 1.5; min-height: 28px; word-break: break-word; font-family: 'DM Mono', monospace; }
+
+    .node-port { position: absolute; width: 11px; height: 11px; border-radius: 50%; border: 1.5px solid var(--border-2); background: var(--surface); cursor: crosshair; transition: border-color .12s, background .12s, transform .12s; z-index: 2; }
+    .node-port:hover { border-color: var(--blue); background: var(--blue-light); transform: scale(1.3); }
+    .port-out { right: -5.5px; top: 50%; transform: translateY(-50%); }
+    .port-out:hover { transform: translateY(-50%) scale(1.3); }
+    .port-in { left: -5.5px; top: 50%; transform: translateY(-50%); }
+    .port-in:hover { transform: translateY(-50%) scale(1.3); }
+
+    #canvas-toolbar { position: absolute; top: 12px; right: 12px; display: flex; gap: 6px; z-index: 20; }
+
+    /* ── RIGHT PANEL ── */
+    #right-panel {
+      width: 260px; min-width: 260px;
+      background: var(--surface); border-left: 1px solid var(--border);
+      display: flex; flex-direction: column;
+      transform: translateX(260px); transition: transform .2s ease;
+    }
+    #right-panel.open { transform: translateX(0); }
+    #rp-header { padding: 12px 14px 10px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+    #rp-title { font-size: 14px; font-weight: 600; }
+    #rp-close { width: 26px; height: 26px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface); cursor: pointer; display: flex; align-items: center; justify-content: center; color: var(--text-2); font-size: 15px; transition: background .1s; }
+    #rp-close:hover { background: var(--surface-2); }
+    #rp-tabs { display: flex; border-bottom: 1px solid var(--border); }
+    .rp-tab { flex: 1; padding: 9px 0; font-size: 12px; font-weight: 500; text-align: center; cursor: pointer; color: var(--text-2); border: none; background: none; border-bottom: 2px solid transparent; font-family: inherit; transition: color .12s; }
+    .rp-tab.active { color: var(--blue); border-bottom-color: var(--blue); }
+    #rp-body { flex: 1; overflow-y: auto; padding: 13px 14px; }
+    .rp-section { margin-bottom: 14px; }
+    .rp-label { font-size: 10.5px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; color: var(--text-3); margin-bottom: 6px; }
+    .rp-value { font-size: 12.5px; background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 8px 10px; color: var(--text); line-height: 1.6; min-height: 36px; font-family: 'DM Mono', monospace; word-break: break-word; }
+    .rp-badge-row { display: flex; align-items: center; gap: 7px; }
+    .memory-rule { background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 9px 10px; margin-bottom: 7px; }
+    .memory-rule:last-child { margin-bottom: 0; }
+    .mr-title { font-size: 12.5px; font-weight: 500; margin-bottom: 3px; line-height: 1.4; }
+    .mr-meta { font-size: 11px; color: var(--text-3); }
+
+    /* ── BOTTOM TIMELINE ── */
+    #bottom-bar { height: 0; background: var(--surface); border-top: 1px solid var(--border); overflow: hidden; transition: height .2s ease; flex-shrink: 0; }
+    #bottom-bar.open { height: 170px; }
+    #bb-header { padding: 9px 16px 8px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border); }
+    #bb-header-left { display: flex; align-items: center; gap: 10px; }
+    #bb-title { font-size: 13px; font-weight: 600; }
+    #bb-status { font-size: 12px; color: var(--text-2); }
+    #bb-score { font-size: 13px; font-weight: 600; color: var(--blue); }
+    .score-bar { width: 90px; height: 4px; background: var(--border); border-radius: 2px; overflow: hidden; }
+    .score-fill { height: 100%; width: 0%; background: linear-gradient(90deg, var(--blue), #10b981); border-radius: 2px; transition: width .3s ease; }
+    #timeline-list { display: flex; gap: 0; padding: 10px 16px; overflow-x: auto; height: 110px; align-items: flex-start; }
+    #timeline-list::-webkit-scrollbar { height: 4px; }
+    #timeline-list::-webkit-scrollbar-track { background: var(--bg); }
+    #timeline-list::-webkit-scrollbar-thumb { background: var(--border-2); border-radius: 2px; }
+    .tl-item { display: flex; flex-direction: column; align-items: center; min-width: 110px; padding: 0 8px; position: relative; }
+    .tl-item:not(:last-child)::after { content: ''; position: absolute; top: 12px; right: -2px; width: 12px; height: 1px; background: var(--border-2); }
+    .tl-dot { width: 11px; height: 11px; border-radius: 50%; background: var(--blue); border: 2px solid var(--surface); box-shadow: 0 0 0 1.5px var(--blue-mid); margin-bottom: 5px; flex-shrink: 0; }
+    .tl-dot.done { background: var(--green); box-shadow: 0 0 0 1.5px var(--green-mid); }
+    .tl-title { font-size: 11.5px; font-weight: 500; text-align: center; line-height: 1.3; margin-bottom: 2px; }
+    .tl-detail { font-size: 10.5px; color: var(--text-3); text-align: center; line-height: 1.3; }
+    .tl-time { font-size: 10px; color: var(--text-3); margin-top: 3px; font-family: 'DM Mono', monospace; }
+
+    /* ── FINAL RESULT MODAL ── */
+    #result-overlay {
+      position: fixed; inset: 0;
+      background: rgba(15, 14, 13, 0.55);
+      backdrop-filter: blur(4px);
+      -webkit-backdrop-filter: blur(4px);
+      display: flex; align-items: center; justify-content: center;
+      z-index: 999;
+      opacity: 0; pointer-events: none;
+      transition: opacity .25s ease;
+    }
+    #result-overlay.show { opacity: 1; pointer-events: all; }
+    #result-modal {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      box-shadow: var(--shadow-xl);
+      width: 680px;
+      max-width: 92vw;
+      max-height: 82vh;
+      display: flex;
+      flex-direction: column;
+      transform: translateY(20px) scale(0.97);
+      transition: transform .25s ease;
+      overflow: hidden;
+    }
+    #result-overlay.show #result-modal { transform: translateY(0) scale(1); }
+    #result-modal-header {
+      padding: 18px 22px 14px;
+      border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; gap: 12px;
+      flex-shrink: 0;
+    }
+    #result-modal-icon {
+      width: 36px; height: 36px; border-radius: 50%;
+      background: var(--green-light); border: 1px solid var(--green-mid);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 16px; flex-shrink: 0;
+    }
+    #result-modal-meta { flex: 1; }
+    #result-modal-title { font-size: 15px; font-weight: 600; margin-bottom: 2px; }
+    #result-modal-sub { font-size: 12px; color: var(--text-2); }
+    #result-modal-close {
+      width: 30px; height: 30px; border: 1px solid var(--border);
+      border-radius: var(--radius-sm); background: var(--surface);
+      cursor: pointer; display: flex; align-items: center; justify-content: center;
+      font-size: 16px; color: var(--text-2); transition: background .12s;
+      flex-shrink: 0;
+    }
+    #result-modal-close:hover { background: var(--surface-2); }
+
+    #result-agent-pills {
+      display: flex; gap: 6px; padding: 12px 22px;
+      border-bottom: 1px solid var(--border);
+      overflow-x: auto; flex-shrink: 0;
+    }
+    #result-agent-pills::-webkit-scrollbar { height: 3px; }
+    .agent-pill {
+      display: flex; align-items: center; gap: 6px;
+      padding: 5px 12px; border-radius: 20px;
+      border: 1px solid var(--border);
+      font-size: 12px; font-weight: 500; white-space: nowrap;
+      cursor: pointer; transition: border-color .12s, background .12s;
+      background: var(--surface);
+    }
+    .agent-pill:hover { background: var(--surface-2); border-color: var(--border-2); }
+    .agent-pill.active { border-color: var(--blue-mid); background: var(--blue-light); color: var(--blue); }
+    .agent-pill-dot { width: 7px; height: 7px; border-radius: 50%; }
+
+    #result-modal-body { flex: 1; overflow-y: auto; padding: 20px 22px; }
+    #result-modal-body::-webkit-scrollbar { width: 5px; }
+    #result-modal-body::-webkit-scrollbar-thumb { background: var(--border-2); border-radius: 3px; }
+    #result-content {
+      font-size: 14px; line-height: 1.75; color: var(--text);
+      white-space: pre-wrap; word-break: break-word;
+    }
+    #result-modal-footer {
+      padding: 14px 22px;
+      border-top: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: space-between;
+      flex-shrink: 0;
+    }
+    #result-footer-stats { display: flex; gap: 16px; }
+    .r-stat { font-size: 12px; color: var(--text-2); display: flex; align-items: center; gap: 5px; }
+    .r-stat strong { color: var(--text); font-weight: 500; }
+    #result-footer-btns { display: flex; gap: 8px; }
+    .res-btn { height: 32px; padding: 0 16px; border-radius: var(--radius-sm); border: 1px solid var(--border); background: var(--surface); font: inherit; font-size: 13px; font-weight: 500; color: var(--text); cursor: pointer; transition: background .12s; }
+    .res-btn:hover { background: var(--surface-2); }
+    .res-btn.primary { background: var(--blue); color: #fff; border-color: var(--blue); }
+    .res-btn.primary:hover { background: #1d4ed8; }
+
+    /* canvas empty hint */
+    .canvas-hint { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; pointer-events: none; }
+    .canvas-hint-title { font-size: 15px; font-weight: 500; color: var(--text-2); margin-bottom: 6px; }
+    .canvas-hint-sub { font-size: 13px; color: var(--text-3); line-height: 1.6; }
+
+    /* animations */
+    @keyframes pulse { 0%,100%{opacity:1}50%{opacity:.35} }
+    .pulse { animation: pulse .8s ease-in-out infinite; }
+    @keyframes flow { to { stroke-dashoffset: -18; } }
+    .flow-line { stroke-dasharray: 5 4; animation: flow .6s linear infinite; }
+    .conn-label { font-size: 10px; fill: var(--text-3); font-family: 'DM Sans', sans-serif; }
+
+    /* info banner */
+    .info-banner {
+      position: absolute; bottom: 14px; left: 50%; transform: translateX(-50%);
+      background: var(--surface); border: 1px solid var(--blue-mid);
+      border-radius: var(--radius-sm); padding: 7px 16px;
+      font-size: 12px; color: var(--blue); box-shadow: var(--shadow-md);
+      white-space: nowrap; z-index: 50; opacity: 0;
+      transition: opacity .3s ease; pointer-events: none;
+    }
+    .info-banner.show { opacity: 1; }
+  </style>
+</head>
+<body>
+
+<!-- TOP BAR -->
+<div id="topbar">
+  <div id="topbar-brand"><span class="dot"></span>Agent Workspace</div>
+  <div id="topbar-sep"></div>
+  <div id="topbar-stats">
+    <div class="tstat">Episodes <strong id="stat-episodes">0</strong></div>
+    <div class="tstat">Avg reward <strong id="stat-reward">0.000</strong></div>
+    <div class="tstat">Rules <strong id="stat-rules">0</strong></div>
+    <div class="tstat" id="run-state-wrap" style="display:none">
+      <span id="run-state-dot" style="width:7px;height:7px;border-radius:50%;background:var(--blue);display:inline-block"></span>
+      <strong id="run-state-label">Running</strong>
+    </div>
+  </div>
+  <div id="topbar-right">
+    <button class="tb-btn" onclick="addExample()">Load example</button>
+    <button class="tb-btn" onclick="toggleTimeline()">Timeline</button>
+    <button class="tb-btn" onclick="clearCanvas()">Clear</button>
+    <button class="tb-btn primary" id="main-run-btn" onclick="runWorkflow()">▶ Run workflow</button>
+  </div>
+</div>
+
+<!-- MAIN -->
+<div id="layout">
+
+  <!-- SIDEBAR -->
+  <div id="sidebar">
+    <div class="sb-section">
+      <div class="sb-title">Task</div>
+      <textarea class="sb-textarea" id="task-input" placeholder="Type a task to run through the agents…"></textarea>
+      <div class="sb-run-row">
+        <button class="sb-run" id="solve-btn" onclick="solveTask()">▶ Run</button>
+        <button class="icon-btn-sm" id="copy-btn" title="Copy output" disabled onclick="copyOutput()">⎘</button>
+        <button class="icon-btn-sm" title="Clear" onclick="document.getElementById('task-input').value=''">↺</button>
+      </div>
+    </div>
+
+    <div class="sb-section">
+      <div class="sb-title">Classification</div>
+      <div class="cls-grid">
+        <div class="cls-cell"><div class="cls-label">Category</div><div class="cls-val" id="category-value">—</div></div>
+        <div class="cls-cell"><div class="cls-label">Difficulty</div><div class="cls-val" id="difficulty-value">—</div></div>
+      </div>
+      <div class="cls-reason" id="reason-value">Waiting for input.</div>
+    </div>
+
+    <div class="sb-section" style="flex:1">
+      <div class="sb-title">Agents</div>
+      <div id="agent-detector" class="agent-card">
+        <span class="ac-dot" style="background:#3b82f6"></span>
+        <div class="ac-body"><div class="ac-name">Detector</div><div class="ac-status" id="acs-detector">Idle</div></div>
+      </div>
+      <div id="agent-solver" class="agent-card">
+        <span class="ac-dot" style="background:#2563eb"></span>
+        <div class="ac-body"><div class="ac-name">Solver</div><div class="ac-status" id="acs-solver">Idle</div></div>
+      </div>
+      <div id="agent-grader" class="agent-card">
+        <span class="ac-dot" style="background:#d97706"></span>
+        <div class="ac-body"><div class="ac-name">Grader</div><div class="ac-status" id="acs-grader">Idle</div></div>
+      </div>
+      <div id="agent-critic" class="agent-card">
+        <span class="ac-dot" style="background:#dc2626"></span>
+        <div class="ac-body"><div class="ac-name">Critic</div><div class="ac-status" id="acs-critic">Idle</div></div>
+      </div>
+      <div id="agent-memory" class="agent-card">
+        <span class="ac-dot" style="background:#16a34a"></span>
+        <div class="ac-body"><div class="ac-name">Memory</div><div class="ac-status" id="acs-memory">Idle</div></div>
+      </div>
+    </div>
+
+    <div class="sb-section">
+      <div class="sb-title">Add node</div>
+      <div class="palette-item" draggable="true" data-type="Planner"><span class="p-dot" style="background:#7c3aed"></span>Planner</div>
+      <div class="palette-item" draggable="true" data-type="Solver"><span class="p-dot" style="background:#2563eb"></span>Solver</div>
+      <div class="palette-item" draggable="true" data-type="Critic"><span class="p-dot" style="background:#dc2626"></span>Critic</div>
+      <div class="palette-item" draggable="true" data-type="Memory"><span class="p-dot" style="background:#16a34a"></span>Memory</div>
+      <div class="palette-item" draggable="true" data-type="Validator"><span class="p-dot" style="background:#d97706"></span>Validator</div>
+    </div>
+  </div>
+
+  <!-- CANVAS -->
+  <div id="canvas-wrap">
+    <svg id="canvas-bg" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <pattern id="dot-grid" width="20" height="20" patternUnits="userSpaceOnUse">
+          <circle cx="1" cy="1" r="0.8" fill="#d0cec9" opacity=".6"/>
+        </pattern>
+      </defs>
+      <rect width="100%" height="100%" fill="url(#dot-grid)"/>
+    </svg>
+    <svg id="connections" xmlns="http://www.w3.org/2000/svg"></svg>
+    <div id="canvas-nodes"></div>
+
+    <div id="canvas-toolbar">
+      <button class="tb-btn" onclick="fitView()">⤢</button>
+    </div>
+
+    <div class="canvas-hint" id="canvas-hint">
+      <div class="canvas-hint-title">Agent canvas</div>
+      <div class="canvas-hint-sub">Drag agents from the sidebar<br>or click "Load example" to start</div>
+    </div>
+
+    <div class="info-banner" id="info-banner">Connections build automatically when you run the workflow</div>
+  </div>
+
+  <!-- RIGHT DETAIL PANEL -->
+  <div id="right-panel">
+    <div id="rp-header">
+      <span id="rp-title">Node detail</span>
+      <button id="rp-close" onclick="closeDetail()">×</button>
+    </div>
+    <div id="rp-tabs">
+      <button class="rp-tab active" onclick="switchTab('output',this)">Output</button>
+      <button class="rp-tab" onclick="switchTab('prompt',this)">Prompt</button>
+      <button class="rp-tab" onclick="switchTab('memory',this)">Memory</button>
+    </div>
+    <div id="rp-body">
+      <p style="font-size:12px;color:var(--text-3)">Select a node to inspect it.</p>
+    </div>
+  </div>
+
+</div>
+
+<!-- BOTTOM TIMELINE -->
+<div id="bottom-bar">
+  <div id="bb-header">
+    <div id="bb-header-left">
+      <span id="bb-title">Run timeline</span>
+      <span id="bb-status">Ready</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px">
+      <div class="score-bar"><div class="score-fill" id="score-fill"></div></div>
+      <span id="bb-score">0.000</span>
+      <button class="icon-btn-sm" onclick="toggleTimeline()" style="font-size:12px">✕</button>
+    </div>
+  </div>
+  <div id="timeline-list"><div style="font-size:12px;color:var(--text-3);padding-top:20px;text-align:center;width:100%">No events yet.</div></div>
+</div>
+
+<!-- ── FINAL RESULT MODAL ── -->
+<div id="result-overlay" onclick="handleOverlayClick(event)">
+  <div id="result-modal">
+    <div id="result-modal-header">
+      <div id="result-modal-icon">✓</div>
+      <div id="result-modal-meta">
+        <div id="result-modal-title">Workflow complete</div>
+        <div id="result-modal-sub">All agents finished — view each agent's output below</div>
+      </div>
+      <button id="result-modal-close" onclick="closeResult()">×</button>
+    </div>
+    <div id="result-agent-pills"></div>
+    <div id="result-modal-body">
+      <div id="result-content"></div>
+    </div>
+    <div id="result-modal-footer">
+      <div id="result-footer-stats">
+        <div class="r-stat">Agents <strong id="res-stat-agents">0</strong></div>
+        <div class="r-stat">Reward <strong id="res-stat-reward">0.000</strong></div>
+        <div class="r-stat">Rules saved <strong id="res-stat-rules">0</strong></div>
+      </div>
+      <div id="result-footer-btns">
+        <button class="res-btn" onclick="closeResult()">Close</button>
+        <button class="res-btn primary" onclick="copyAndClose()">Copy result</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const TYPES = {
+  Planner:   {color:'#7c3aed', prompt:'You are a Planner agent. Your job is to decompose the given task into clear subtasks and create a structured execution plan. Be concise and actionable. Output as numbered steps.'},
+  Solver:    {color:'#2563eb', prompt:'You are a Solver agent. Solve the given task step by step using chain-of-thought reasoning. Be thorough yet concise. Build on any plan or context provided.'},
+  Critic:    {color:'#dc2626', prompt:'You are a Critic agent. Critically review the previous agent output. Give a quality score from 0.0 to 1.0, list what is good, and provide 2-3 specific, actionable improvements. Format: Score: X.X | Good: ... | Improve: ...'},
+  Memory:    {color:'#16a34a', prompt:'You are a Memory agent. Extract 1-3 key learnable rules from this task and solution that would help future similar tasks. Format each as:\nRule: [concise rule]\nReason: [why it helps]'},
+  Validator: {color:'#d97706', prompt:'You are a Validator agent. Verify whether the solution fully satisfies the original task requirements. List: ✓ Met criteria and ✗ Gaps (if any). Conclude with PASS or FAIL.'},
+};
+
+const AUTO_CHAIN_ORDER = ['Planner','Solver','Critic','Memory','Validator'];
+const CONN_LABELS = {
+  'Planner→Solver':'plan','Solver→Critic':'output','Critic→Solver':'feedback',
+  'Solver→Memory':'result','Solver→Validator':'solution','Critic→Memory':'critique',
+  'Memory→Validator':'context','Planner→Memory':'task',
+};
+
+let nodes={}, conns=[], selected=null, dragNode=null, dragOff={x:0,y:0}, activeTab='output', running=false;
+const appState={output:'', nodeOutputs:{}, orderedIds:[]};
+
+function uid(){return Math.random().toString(36).slice(2,8)}
+
+// ── PALETTE DRAG ──
+document.querySelectorAll('.palette-item').forEach(el=>{
+  el.addEventListener('dragstart',e=>{
+    e.dataTransfer.setData('agentType',el.dataset.type);
+    flashBanner('Connections build automatically when you run the workflow');
+  });
+});
+const cw=document.getElementById('canvas-wrap');
+cw.addEventListener('dragover',e=>e.preventDefault());
+cw.addEventListener('drop',e=>{
+  e.preventDefault();
+  const type=e.dataTransfer.getData('agentType');
+  if(!type)return;
+  const r=cw.getBoundingClientRect();
+  addNode(type,e.clientX-r.left-81,e.clientY-r.top-42);
+});
+
+function flashBanner(msg){
+  const b=document.getElementById('info-banner');
+  b.textContent=msg; b.classList.add('show');
+  setTimeout(()=>b.classList.remove('show'),3000);
+}
+
+// ── NODES ──
+function addNode(type,x,y,id){
+  id=id||uid();
+  nodes[id]={id,type,x,y,status:'idle',log:'Ready.',data:{prompt:TYPES[type]?.prompt||'',output:'',feedback:'',memory:[]}};
+  renderNode(id); updateHint();
+  return id;
+}
+function updateHint(){
+  document.getElementById('canvas-hint').style.display=Object.keys(nodes).length?'none':'block';
+}
+function renderNode(id){
+  const n=nodes[id];
+  let el=document.getElementById('nd-'+id);
+  if(!el){
+    el=document.createElement('div');
+    el.className='agent-node'; el.id='nd-'+id;
+    el.innerHTML=`
+      <div class="node-port port-in" id="pin-${id}"></div>
+      <div class="node-card" id="nc-${id}">
+        <div class="node-header">
+          <span class="node-type-dot" style="background:${TYPES[n.type]?.color||'#888'}"></span>
+          <span class="node-name">${n.type}</span>
+          <span class="node-badge badge-idle" id="nbadge-${id}">Idle</span>
         </div>
-      `;
+        <div class="node-log" id="nlog-${id}">${n.log}</div>
+      </div>
+      <div class="node-port port-out" id="pout-${id}"></div>
+    `;
+    document.getElementById('canvas-nodes').appendChild(el);
+    el.querySelector('#nc-'+id).addEventListener('click',e=>{if(!e.defaultPrevented)selectNode(id);});
+    el.addEventListener('mousedown',e=>{
+      if(e.target.classList.contains('node-port'))return;
+      dragNode=id;
+      const r=el.getBoundingClientRect();
+      dragOff={x:e.clientX-r.left,y:e.clientY-r.top};
+      e.preventDefault();
+    });
+  }
+  el.style.left=n.x+'px'; el.style.top=n.y+'px';
+  setNodeStatus(id,n.status,n.log);
+}
+function setNodeStatus(id,status,log){
+  const n=nodes[id]; if(!n)return;
+  n.status=status; if(log!==undefined)n.log=log;
+  const el=document.getElementById('nd-'+id); if(!el)return;
+  el.className='agent-node'+(status==='running'?' running':status==='done'?' done':status==='error'?' error':'')+(id===selected?' selected':'');
+  const badge=document.getElementById('nbadge-'+id);
+  badge.className='node-badge badge-'+status;
+  badge.innerHTML=status==='running'
+    ?`<span class="pulse" style="display:inline-block;width:5px;height:5px;border-radius:50%;background:var(--blue);margin-right:3px"></span>Running`
+    :({idle:'Idle',done:'Done',error:'Error'}[status]||status);
+  document.getElementById('nlog-'+id).textContent=n.log;
+}
 
-      updateMemoryDisplay();
-      document.getElementById('submitBtn').disabled = false;
-      isProcessing = false;
+document.addEventListener('mousemove',e=>{
+  if(dragNode){
+    const r=cw.getBoundingClientRect();
+    nodes[dragNode].x=e.clientX-r.left-dragOff.x;
+    nodes[dragNode].y=e.clientY-r.top-dragOff.y;
+    document.getElementById('nd-'+dragNode).style.left=nodes[dragNode].x+'px';
+    document.getElementById('nd-'+dragNode).style.top=nodes[dragNode].y+'px';
+    drawConnections();
+  }
+});
+document.addEventListener('mouseup',()=>{ dragNode=null; });
+
+// ── CONNECTIONS ──
+function buildAutoConnections(orderedIds){
+  conns=[];
+  for(let i=0;i<orderedIds.length-1;i++){
+    const from=orderedIds[i], to=orderedIds[i+1];
+    const key=nodes[from].type+'→'+nodes[to].type;
+    conns.push({from, to, label:CONN_LABELS[key]||'→', active:false});
+  }
+  drawConnections();
+}
+function nodeOutPt(id){const n=nodes[id];return{x:n.x+162,y:n.y+46};}
+function nodeInPt(id) {const n=nodes[id];return{x:n.x,    y:n.y+46};}
+function drawConnections(){
+  const svg=document.getElementById('connections');
+  svg.innerHTML=`<defs><marker id="carr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></marker></defs>`;
+  conns.forEach(c=>{
+    if(!nodes[c.from]||!nodes[c.to])return;
+    const a=nodeOutPt(c.from), b=nodeInPt(c.to);
+    const cx=(a.x+b.x)/2;
+    const d=`M${a.x},${a.y} C${cx},${a.y} ${cx},${b.y} ${b.x},${b.y}`;
+    const col=c.active?'#3b82f6':'#c8c5c0';
+    const path=document.createElementNS('http://www.w3.org/2000/svg','path');
+    path.setAttribute('d',d); path.setAttribute('fill','none');
+    path.setAttribute('stroke',col); path.setAttribute('stroke-width',c.active?'1.8':'1.2');
+    if(c.active)path.classList.add('flow-line');
+    path.setAttribute('marker-end','url(#carr)');
+    svg.appendChild(path);
+    if(c.label){
+      const lbl=document.createElementNS('http://www.w3.org/2000/svg','text');
+      lbl.setAttribute('x',(a.x+b.x)/2); lbl.setAttribute('y',(a.y+b.y)/2-8);
+      lbl.setAttribute('text-anchor','middle'); lbl.classList.add('conn-label');
+      lbl.textContent=c.label;
+      svg.appendChild(lbl);
     }
+  });
+}
 
-    async function updateMemoryDisplay() {
-      try {
-        const response = await fetch('/api/memory');
-        const memory = await response.json();
+// ── SELECTION ──
+function selectNode(id){
+  selected=id;
+  Object.keys(nodes).forEach(nid=>{
+    const el=document.getElementById('nd-'+nid);
+    if(el)el.classList.toggle('selected',nid===id);
+  });
+  openDetail(id);
+}
+function openDetail(id){
+  document.getElementById('right-panel').classList.add('open');
+  document.getElementById('rp-title').textContent=nodes[id].type;
+  renderDetailTab(id,activeTab);
+}
+function closeDetail(){
+  document.getElementById('right-panel').classList.remove('open');
+  selected=null;
+  document.querySelectorAll('.agent-node').forEach(el=>el.classList.remove('selected'));
+}
+function switchTab(tab,btn){
+  activeTab=tab;
+  document.querySelectorAll('.rp-tab').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  if(selected)renderDetailTab(selected,tab);
+}
+function renderDetailTab(id,tab){
+  const n=nodes[id], d=n.data||{};
+  const body=document.getElementById('rp-body');
+  const badge=`<div class="rp-section"><div class="rp-label">Status</div><div class="rp-badge-row"><span class="node-badge badge-${n.status}">${n.status}</span></div></div>`;
+  if(tab==='output'){
+    body.innerHTML=badge+
+      `<div class="rp-section"><div class="rp-label">Output</div><div class="rp-value">${esc(d.output||'No output yet.')}</div></div>`+
+      `<div class="rp-section"><div class="rp-label">Feedback</div><div class="rp-value">${esc(d.feedback||'—')}</div></div>`;
+  } else if(tab==='prompt'){
+    body.innerHTML=badge+`<div class="rp-section"><div class="rp-label">System prompt</div><div class="rp-value">${esc(d.prompt||'—')}</div></div>`;
+  } else {
+    const rules=(d.memory||[]).map(r=>`<div class="memory-rule"><div class="mr-title">${esc(r.rule)}</div><div class="mr-meta">Source: ${esc(r.ep)}</div></div>`).join('');
+    body.innerHTML=badge+`<div class="rp-section"><div class="rp-label">Learned rules</div>${rules||'<div class="rp-value">No rules yet.</div>'}</div>`;
+  }
+}
+function esc(v){return String(v??'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;');}
 
-        const stats = `
-          <div class="stat-row">
-            <span class="stat-label">Episodes:</span>
-            <span class="stat-value">${memory.globalStats.totalEpisodes}</span>
-          </div>
-          <div class="stat-row">
-            <span class="stat-label">Rules:</span>
-            <span class="stat-value">${memory.learnedRules.length}</span>
-          </div>
-          <div class="stat-row">
-            <span class="stat-label">Avg Reward:</span>
-            <span class="stat-value">${(memory.globalStats.avgReward || 0).toFixed(2)}</span>
-          </div>
-          <div class="stat-row">
-            <span class="stat-label">Peak Reward:</span>
-            <span class="stat-value">${(memory.globalStats.bestReward || 0).toFixed(2)}</span>
-          </div>
-        `;
+// ── TIMELINE ──
+let timelineOpen=false;
+function toggleTimeline(){
+  timelineOpen=!timelineOpen;
+  document.getElementById('bottom-bar').classList.toggle('open',timelineOpen);
+}
+function addTimeline(title,detail,done){
+  const list=document.getElementById('timeline-list');
+  const empty=list.querySelector('div[style]');
+  if(empty&&!empty.id)empty.remove();
+  const item=document.createElement('div'); item.className='tl-item';
+  item.innerHTML=`<div class="tl-dot${done?' done':''}"></div><div class="tl-title">${esc(title)}</div><div class="tl-detail">${detail?esc(detail.slice(0,40)):''}</div><div class="tl-time">${new Date().toLocaleTimeString(undefined,{hour:'2-digit',minute:'2-digit',second:'2-digit'})}</div>`;
+  list.appendChild(item); list.scrollLeft=9999;
+}
+function updateScore(val){
+  const s=Math.max(0,Math.min(1,Number(val)||0));
+  document.getElementById('bb-score').textContent=s.toFixed(3);
+  document.getElementById('score-fill').style.width=(s*100)+'%';
+}
 
-        const rules = memory.learnedRules.slice(-5).map(r => `
-          <div class="rule-item">• ${r.rule}</div>
-        `).join('') || '<div style="color: #64b5f6; font-size: 11px; text-align: center; padding: 10px;">No rules yet</div>';
+// ── SIDEBAR AGENT STATUS ──
+function setSidebarAgent(name,status,detail){
+  const card=document.getElementById('agent-'+name); if(!card)return;
+  card.classList.remove('running','done','error');
+  if(status==='running')card.classList.add('running');
+  else if(status==='done')card.classList.add('done');
+  else if(status==='error')card.classList.add('error');
+  const st=card.querySelector('#acs-'+name); if(st)st.textContent=detail||status;
+}
+function resetSidebar(){
+  ['detector','solver','grader','critic','memory'].forEach(n=>setSidebarAgent(n,'idle','Idle'));
+}
 
-        document.getElementById('memoryStats').innerHTML = stats;
-        document.getElementById('learnedRules').innerHTML = rules;
-      } catch (err) {
-        console.error('Failed to load memory:', err);
+// ── TOPO SORT (by type order then x position) ──
+function topoSort(){
+  return Object.keys(nodes).sort((a,b)=>{
+    const ai=AUTO_CHAIN_ORDER.indexOf(nodes[a].type), bi=AUTO_CHAIN_ORDER.indexOf(nodes[b].type);
+    if(ai!==bi)return ai-bi;
+    return nodes[a].x-nodes[b].x;
+  });
+}
+
+function sleep(ms){return new Promise(r=>setTimeout(r,ms));}
+
+// ── NODE TYPE → AGENT NAME MAPPING (matches sidebar agent cards) ──
+const TYPE_TO_AGENT = {
+  Planner:'detector', Solver:'solver', Critic:'critic', Memory:'memory', Validator:'grader'
+};
+
+// ── MAIN WORKFLOW RUN (uses /api/solve-stream SSE backend) ──
+async function runWorkflow(){
+  if(running)return;
+  const ids=Object.keys(nodes);
+  if(!ids.length){alert('Add some agents first.');return;}
+
+  const task=document.getElementById('task-input').value.trim();
+  if(!task){document.getElementById('task-input').focus();return;}
+
+  running=true;
+  appState.nodeOutputs={}; appState.output=''; appState.orderedIds=[];
+  document.getElementById('copy-btn').disabled=true;
+
+  // Reset all nodes
+  ids.forEach(id=>{
+    setNodeStatus(id,'idle','Waiting…');
+    nodes[id].data.output=''; nodes[id].data.feedback=''; nodes[id].data.memory=[];
+  });
+  conns=[]; drawConnections();
+  document.getElementById('timeline-list').innerHTML='';
+  updateScore(0);
+  resetSidebar();
+
+  if(!timelineOpen)toggleTimeline();
+  setRunState('Running');
+  document.getElementById('bb-status').textContent='Running';
+
+  const order=topoSort();
+  appState.orderedIds=order;
+
+  // Animate auto-connections appearing one by one before streaming starts
+  await sleep(200);
+  for(let i=0;i<order.length-1;i++){
+    const from=order[i], to=order[i+1];
+    const key=nodes[from].type+'→'+nodes[to].type;
+    conns.push({from,to,label:CONN_LABELS[key]||'→',active:false});
+    drawConnections();
+    await sleep(120);
+  }
+  await sleep(300);
+
+  // Mark first node as running immediately
+  if(order.length) setNodeStatus(order[0],'running','Classifying task…');
+
+  let rulesCount=0;
+  let finalScore=0;
+
+  try {
+    const res=await fetch('/api/solve-stream',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({task})
+    });
+
+    if(!res.ok||!res.body) throw new Error('Server error: '+res.status);
+
+    const reader=res.body.getReader();
+    const dec=new TextDecoder();
+    let buf='';
+
+    // Track which canvas node index is currently active
+    let activeNodeIdx=0;
+
+    while(true){
+      const{value,done}=await reader.read();
+      if(done)break;
+      buf+=dec.decode(value,{stream:true});
+      const chunks=buf.split('\n\n');
+      buf=chunks.pop()||'';
+
+      for(const chunk of chunks){
+        const lines=chunk.split('\n');
+        const evLine=lines.find(l=>l.startsWith('event:'));
+        const dataLine=lines.find(l=>l.startsWith('data:'));
+        if(!evLine||!dataLine)continue;
+
+        const event=evLine.replace('event:','').trim();
+        let data;
+        try{ data=JSON.parse(dataLine.replace('data:','').trim()); }
+        catch{ continue; }
+
+        // ── Route SSE events to canvas nodes + sidebar ──
+
+        if(event==='status'){
+          document.getElementById('bb-status').textContent=data.message||'Working…';
+          if(data.phase==='detecting'){
+            setSidebarAgent('detector','running',data.detail||'Classifying…');
+            addTimeline(data.message||'Classifying','');
+          }
+          if(data.phase==='solving'){
+            setSidebarAgent('detector','done','Done');
+            // Advance to Solver node on canvas
+            const solverIdx=order.findIndex(id=>nodes[id].type==='Solver');
+            if(solverIdx!==-1){
+              if(activeNodeIdx!==solverIdx){
+                // Deactivate previous
+                const prev=order[activeNodeIdx];
+                if(prev){ setNodeStatus(prev,'running','Awaiting solver…'); }
+                // Activate connection
+                const c=conns.find(c=>c.from===order[Math.max(0,solverIdx-1)]&&c.to===order[solverIdx]);
+                if(c){c.active=true;drawConnections();}
+                activeNodeIdx=solverIdx;
+              }
+              setNodeStatus(order[activeNodeIdx],'running','Solving…');
+            }
+            setSidebarAgent('solver','running',data.detail||'Solving…');
+            addTimeline(data.message||'Solving','');
+          }
+        }
+
+        else if(event==='detection'){
+          document.getElementById('category-value').textContent=data.category||'—';
+          document.getElementById('difficulty-value').textContent=data.difficulty||'—';
+          document.getElementById('reason-value').textContent=data.reason||'';
+          setSidebarAgent('detector','done',(data.category||'')+'/'+(data.difficulty||''));
+          addTimeline('Classified',data.category+' / '+data.difficulty);
+          // Mark first (Planner/Detector) canvas node done
+          if(order[0]) setNodeStatus(order[0],'done','Classified: '+data.category);
+        }
+
+        else if(event==='agent'){
+          const agentName=data.agent==='system'?'memory':data.agent;
+          const sideStatus=data.status==='success'?'done':'running';
+          setSidebarAgent(agentName,sideStatus,data.message||'');
+          addTimeline(data.message||agentName+' update',data.detail||'');
+
+          // Map agent name back to canvas node type and activate it
+          const typeMap={solver:'Solver',grader:'Validator',critic:'Critic',memory:'Memory',detector:'Planner'};
+          const targetType=typeMap[agentName];
+          if(targetType){
+            const targetIdx=order.findIndex(id=>nodes[id].type===targetType);
+            if(targetIdx!==-1){
+              // Deactivate old active connection
+              if(activeNodeIdx>0){
+                const oldC=conns.find(c=>c.from===order[activeNodeIdx-1]&&c.to===order[activeNodeIdx]);
+                if(oldC){oldC.active=false;}
+              }
+              // Activate new connection
+              if(targetIdx>0){
+                const newC=conns.find(c=>c.from===order[targetIdx-1]&&c.to===order[targetIdx]);
+                if(newC){newC.active=true;}
+              }
+              activeNodeIdx=targetIdx;
+              drawConnections();
+              const status=data.status==='success'?'done':'running';
+              setNodeStatus(order[targetIdx],status,data.message||'Working…');
+            }
+          }
+        }
+
+        else if(event==='step_result'){
+          updateScore(data.score);
+          setSidebarAgent('grader',data.success?'done':'running',data.feedback||'');
+          addTimeline('Attempt '+(data.step||'')+' graded',data.feedback||'',data.success);
+          // Store partial output on the current solver node
+          const solverId=order.find(id=>nodes[id].type==='Solver');
+          if(solverId){
+            nodes[solverId].data.feedback=data.feedback||'';
+            if(selected===solverId)renderDetailTab(solverId,activeTab);
+          }
+        }
+
+        else if(event==='critic'){
+          setSidebarAgent('critic','done',data.feedback||'');
+          addTimeline('Critic feedback',data.priorityFix||data.feedback||'');
+          const criticId=order.find(id=>nodes[id].type==='Critic');
+          if(criticId){
+            nodes[criticId].data.output=data.feedback||'';
+            setNodeStatus(criticId,'done',(data.feedback||'').slice(0,60));
+            if(selected===criticId)renderDetailTab(criticId,activeTab);
+          }
+        }
+
+        else if(event==='complete'){
+          appState.output=data.solution||'';
+          finalScore=Number(data.totalReward||0);
+          rulesCount=data.memory?.learnedRules||0;
+
+          updateScore(finalScore);
+          document.getElementById('stat-rules').textContent=rulesCount;
+
+          // Mark all remaining nodes done with their outputs
+          order.forEach((id,i)=>{
+            const n=nodes[id];
+            const out=i===order.length-1?(data.solution||'Complete'):('Done in '+data.steps+' step(s)');
+            nodes[id].data.output=out;
+            appState.nodeOutputs[id]=out;
+            setNodeStatus(id,'done',out.slice(0,60));
+          });
+
+          // Store memory rules on Memory node
+          const memId=order.find(id=>nodes[id].type==='Memory');
+          if(memId&&data.memory){
+            nodes[memId].data.memory=[
+              {rule:'Episodes recorded: '+data.memory.totalEpisodes, ep:'System'},
+              {rule:'Learned rules: '+data.memory.learnedRules, ep:'System'},
+            ];
+          }
+
+          // Deactivate all connections
+          conns.forEach(c=>c.active=false);
+          drawConnections();
+
+          setSidebarAgent('solver','done',(data.steps||1)+' attempt(s)');
+          setSidebarAgent('grader',data.success?'done':'running','Reward '+finalScore.toFixed(3));
+          setSidebarAgent('memory','done',rulesCount+' rules');
+
+          const ep=parseInt(document.getElementById('stat-episodes').textContent)||0;
+          document.getElementById('stat-episodes').textContent=ep+1;
+          document.getElementById('stat-reward').textContent=finalScore.toFixed(3);
+
+          document.getElementById('copy-btn').disabled=false;
+          setRunState('Complete','done');
+          document.getElementById('bb-status').textContent='Complete';
+          running=false;
+
+          showResultModal(order, finalScore, rulesCount, data);
+        }
+
+        else if(event==='error'){
+          setRunState('Error','error');
+          document.getElementById('bb-status').textContent=data.message||'Failed';
+          setSidebarAgent('solver','error',data.message||'Error');
+          addTimeline('Error',data.message||'');
+          order.forEach(id=>{ if(nodes[id].status==='running') setNodeStatus(id,'error','Failed'); });
+          conns.forEach(c=>c.active=false); drawConnections();
+          running=false;
+        }
       }
     }
+  } catch(e){
+    setRunState('Error','error');
+    document.getElementById('bb-status').textContent=e.message;
+    setSidebarAgent('solver','error',e.message);
+    addTimeline('Connection error',e.message);
+    order.forEach(id=>{ if(nodes[id].status==='running') setNodeStatus(id,'error',e.message); });
+    conns.forEach(c=>c.active=false); drawConnections();
+    running=false;
+  }
+}
 
-    async function submitTask() {
-      const title = document.getElementById('title').value;
-      const prompt = document.getElementById('prompt').value;
-      const category = document.getElementById('category').value;
-      const difficulty = document.getElementById('difficulty').value;
+// ── RESULT MODAL ──
+function showResultModal(order, finalScore, rulesCount){
+  // Build agent pills
+  const pillsEl=document.getElementById('result-agent-pills');
+  pillsEl.innerHTML='';
+  order.forEach((id,i)=>{
+    const n=nodes[id];
+    const pill=document.createElement('div');
+    pill.className='agent-pill'+(i===order.length-1?' active':'');
+    pill.dataset.id=id;
+    pill.innerHTML=`<span class="agent-pill-dot" style="background:${TYPES[n.type]?.color||'#888'}"></span>${n.type}`;
+    pill.onclick=()=>switchResultTab(id, pill);
+    pillsEl.appendChild(pill);
+  });
 
-      if (!title || !prompt) {
-        alert('Please fill in title and description');
-        return;
-      }
+  // Show last agent output by default (final result)
+  const lastId=order[order.length-1];
+  document.getElementById('result-content').textContent=appState.nodeOutputs[lastId]||'No output.';
+  document.getElementById('result-modal-title').textContent='Workflow complete — '+order.length+' agents ran';
+  document.getElementById('result-modal-sub').textContent='Click an agent pill to view its specific output';
+  document.getElementById('res-stat-agents').textContent=order.length;
+  document.getElementById('res-stat-reward').textContent=finalScore.toFixed(3);
+  document.getElementById('res-stat-rules').textContent=rulesCount;
 
-      isProcessing = true;
-      document.getElementById('submitBtn').disabled = true;
+  document.getElementById('result-overlay').classList.add('show');
+}
 
-      // Reset flow visualization
-      document.querySelectorAll('.flow-node').forEach(node => {
-        node.classList.remove('active', 'complete');
-        node.querySelector('.flow-node-status').textContent = 'Ready...';
-      });
-      document.querySelectorAll('.flow-connector').forEach(c => c.classList.remove('active'));
-      document.getElementById('detailsContainer').innerHTML = '';
-      document.getElementById('outputContainer').innerHTML = '';
+function switchResultTab(id, pillEl){
+  document.querySelectorAll('.agent-pill').forEach(p=>p.classList.remove('active'));
+  pillEl.classList.add('active');
+  document.getElementById('result-content').textContent=appState.nodeOutputs[id]||'No output.';
+}
 
-      try {
-        await fetch('/api/task', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            title, prompt, category, difficulty,
-            evaluationCriteria: ['Correct and accurate', 'Well-structured', 'Handles edge cases']
-          })
-        });
-      } catch (err) {
-        alert('Error: ' + err.message);
-        document.getElementById('submitBtn').disabled = false;
-        isProcessing = false;
-      }
-    }
+function closeResult(){
+  document.getElementById('result-overlay').classList.remove('show');
+}
 
-    async function resetSession() {
-      await fetch('/api/reset', { method: 'POST' });
-      document.getElementById('title').value = '';
-      document.getElementById('prompt').value = '';
-      document.getElementById('detailsContainer').innerHTML = '';
-      document.getElementById('outputContainer').innerHTML = '';
-      document.querySelectorAll('.flow-node').forEach(node => {
-        node.classList.remove('active', 'complete');
-        node.querySelector('.flow-node-status').textContent = 'Waiting...';
-      });
-      document.querySelectorAll('.flow-connector').forEach(c => c.classList.remove('active'));
-      updateMemoryDisplay();
-    }
+function handleOverlayClick(e){
+  if(e.target===document.getElementById('result-overlay'))closeResult();
+}
 
-    connectWebSocket();
-    updateMemoryDisplay();
-  </script>
+function copyAndClose(){
+  const text=document.getElementById('result-content').textContent;
+  if(text)navigator.clipboard.writeText(text);
+  closeResult();
+}
+function copyOutput(){
+  if(!appState.output)return;
+  navigator.clipboard.writeText(appState.output);
+}
+
+// ── TASK QUICK RUN ──
+async function solveTask(){
+  const task=document.getElementById('task-input').value.trim();
+  if(!task){document.getElementById('task-input').focus();return;}
+  if(!Object.keys(nodes).length){addExample();await sleep(200);}
+  await runWorkflow();
+}
+
+// ── RUN STATE ──
+function setRunState(label,tone){
+  const wrap=document.getElementById('run-state-wrap');
+  wrap.style.display='flex';
+  document.getElementById('run-state-label').textContent=label;
+  document.getElementById('run-state-dot').style.background=tone==='done'?'#16a34a':tone==='error'?'#dc2626':'#2563eb';
+}
+
+// ── CANVAS UTILS ──
+function clearCanvas(){
+  nodes={}; conns=[]; selected=null;
+  document.getElementById('canvas-nodes').innerHTML='';
+  document.getElementById('right-panel').classList.remove('open');
+  drawConnections(); updateHint();
+}
+function fitView(){
+  const ids=Object.keys(nodes); if(!ids.length)return;
+  let minX=Infinity, minY=Infinity;
+  ids.forEach(id=>{minX=Math.min(minX,nodes[id].x);minY=Math.min(minY,nodes[id].y);});
+  ids.forEach(id=>{nodes[id].x-=minX-40;nodes[id].y-=minY-40;renderNode(id);});
+  drawConnections();
+}
+function addExample(){
+  clearCanvas();
+  addNode('Planner', 40,  60);
+  addNode('Solver',  240, 180);
+  addNode('Critic',  240, 330);
+  addNode('Memory',  460, 260);
+  drawConnections();
+}
+
+// ── INIT ──
+addExample();
+updateHint();
+</script>
 </body>
 </html>

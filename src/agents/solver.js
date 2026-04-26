@@ -22,7 +22,7 @@ Be direct and specific. Avoid unnecessary preamble.`;
 export class SolverAgent {
   constructor() {
     this.llm = new LLMClient({
-      model: process.env.SOLVER_MODEL || 'claude-sonnet-4-20250514',
+      model: process.env.SOLVER_MODEL || 'gpt-4o',
       maxTokens: 2048,
     });
     this.baseSystem = BASE_SYSTEM;
