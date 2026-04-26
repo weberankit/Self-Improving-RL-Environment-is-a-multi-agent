@@ -8,14 +8,19 @@
     "start": "node src/index.js",
     "demo": "node demo/runDemo.js",
     "train": "node src/index.js --mode=train",
-    "eval": "node src/index.js --mode=eval"
+    "eval": "node src/index.js --mode=eval",
+    "web": "node server.js",
+    "dev": "node server.js"
   },
   "dependencies": {
     "chalk": "^5.3.0",
+    "cors": "^2.8.5",
     "dotenv": "^16.4.5",
+    "express": "^4.18.2",
     "node-fetch": "^3.3.2",
     "ora": "^8.0.1",
-    "uuid": "^9.0.1"
+    "uuid": "^9.0.1",
+    "ws": "^8.15.0"
   },
   "engines": {
     "node": ">=18.0.0"

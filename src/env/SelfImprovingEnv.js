@@ -220,7 +220,7 @@ export class SelfImprovingEnv {
   }
 
   // ─── Task Selection ────────────────────────────────────────────────────────
-
+  // for training purpose initially
   _selectTask() {
     if (this.useCurriculum && this.taskQueue.length > 0) {
       // Curriculum: pop from front, cycle

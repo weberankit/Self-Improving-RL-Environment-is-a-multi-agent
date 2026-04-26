@@ -21,7 +21,7 @@ Return ONLY valid JSON — no markdown, no preamble.`;
 export class OptimizerAgent {
   constructor(memory) {
     this.llm = new LLMClient({
-      model: process.env.OPTIMIZER_MODEL || 'claude-sonnet-4-20250514',
+      model: process.env.OPTIMIZER_MODEL || 'gpt-4o-mini',
       maxTokens: 2048,
       temperature: 0.4,
     });

@@ -14,7 +14,7 @@ You must return ONLY valid JSON — no markdown, no explanation outside the JSON
 export class LLMGrader {
   constructor() {
     this.llm = new LLMClient({
-      model: process.env.GRADER_MODEL || 'claude-sonnet-4-20250514',
+      model: process.env.GRADER_MODEL || 'gpt-4o-mini',
       maxTokens: 1024,
       temperature: 0.1, // Low temp for consistent grading
     });
