@@ -1,294 +1,141 @@
+# 🤖 Self-Improving RL Environment
 
+> A multi-agent reinforcement learning system powered by LLMs — where agents solve tasks, receive automated feedback, and **continuously evolve their own logic** through persistent memory and prompt optimization.
 
-Self-Improving RL Environment
+Unlike traditional Reinforcement Learning, this system uses **natural language as the action space**, learning by rewriting its own system prompts and building a long-term memory of successful strategies.
 
-A multi-agent reinforcement learning system powered by LLMs where agents solve tasks, get graded, receive feedback, and continuously improve over time.
+---
 
-Unlike traditional RL, this system learns by rewriting its own prompt + building persistent memory.
+## 🧠 Core Concept: LLM as an RL Policy
 
-🧠 Core Idea (LLM as RL Policy)
+Traditional RL components are mapped directly to LLM interactions:
 
-Instead of numeric actions, this system uses language as the action space:
+| Component | RL Definition | LLM Implementation |
+|-----------|--------------|-------------------|
+| **State** | Environment Snapshot | Task + Memory Context + Attempt History |
+| **Action** | Agent Output | The Solver's generated response/solution |
+| **Reward** | Numerical Signal | Hybrid Score ($0.0 \rightarrow 1.0$) from Grader |
+| **Policy** | Decision Logic | The Solver's System Prompt *(optimized over time)* |
 
-State = Task + Memory Context + Attempt Number
-Action = Solver's generated response
-Reward = Score (0.0 → 1.0)
-Policy = Solver’s system prompt (continuously optimized)
-🔁 Full Learning Loop
-Task → Solver → Grader → Critic → [Retry with feedback]
-                                      ↓
-                                Memory stores
-                                      ↓
-                         Optimizer updates prompt
-⚙️ Step-by-Step Example (How It Actually Works)
+---
 
-Let’s say the task is:
+## 🏗️ Architecture & Workflow
 
-“Write a function fizzBuzzPrime(n)”
+### The Learning Loop
 
-1. Memory Injection
+The system follows a continuous improvement cycle where failures directly inform the next attempt and future strategies.
 
-Before solving:
-
-Loads past rules (e.g., “always handle edge cases”)
-Loads prompt strategy for coding
-Loads similar past episodes
-2. Solver Attempt (Step 1)
-
-Solver generates a response using:
-
-Base prompt
-learned rules
-memory context
-3. Hybrid Grading
-
-Two layers:
-
-Programmatic (40%)
-Code present
-Function exists
-Return statement
-LLM Evaluation (60%)
-Correctness
-Completeness
-Clarity
-
-Final score → 0.0 – 1.0
-
-4. Critic Feedback (if failed)
-
-If score < threshold:
-
-Critic analyzes failure:
-
-Missing edge cases
-Incorrect logic
-Weak explanation
-5. Retry (Improvement Loop)
-
-Solver retries with:
-
-Previous feedback injected
-
-→ Produces improved answer
-
-6. Memory Update
-
-Stores:
-
-Episode summary
-Reward
-Success/failure
-Feedback patterns
-
-Also updates:
-
-Task stats (per category/difficulty)
-Global stats
-7. Optimization (Every N Episodes)
-
-After N episodes (default = 5):
-
-Optimizer:
-
-Analyzes failures + successes
-Extracts patterns
-Rewrites solver system prompt
-
-Example improvement:
-
-OLD:
-"You are a helpful assistant"
-
-NEW:
-"For coding tasks:
- - Always handle edge cases
- - Include input validation
- - Explain logic briefly"
-8. Memory Compression (Advanced)
-
-After many episodes:
-
-Raw history → compressed into rules
-
-## Architecture
-
-```
-Task → Solver → Grader → Critic → [Retry] → Memory
-                                               ↓
-                          Optimizer ←── Episode batch
-                               ↓
-                        Solver prompt update
+```mermaid
+graph TD
+    A[Task] --> B[Solver]
+    B --> C[Grader]
+    C --> D{Score < Threshold?}
+    D -- Yes --> E[Critic]
+    E --> B
+    D -- No --> F[Memory Store]
+    F --> G[Optimizer]
+    G -->|Update System Prompt| B
 ```
 
+---
 
-Example:
+## ⚙️ How It Works
 
-"Always check n <= 0"
-"Include helper functions for prime logic"
-🧠 Two Modes of Learning (IMPORTANT)
-1. Training Mode (Taskbank)
+### 1. 💾 Memory Injection
+Before attempting a task, the Solver loads:
+- **Learned Rules** — e.g., *"Always handle edge cases for math functions"*
+- **Prompt Strategies** — Optimized methods for specific task types
+- **Historical Context** — Successful patterns from past episodes
 
-System learns from predefined tasks:
+### 2. 📊 Hybrid Grading System
+Solutions are evaluated through a two-layer process:
 
-Coding
-Math
-Reasoning
-Writing
-Analysis
+| Layer | Weight | What It Checks |
+|-------|--------|----------------|
+| **Programmatic** | 40% | Syntax, presence of functions, return statements |
+| **LLM Evaluation** | 60% | Correctness, logic, and clarity |
 
-Uses:
+### 3. 🔁 The Critic & Retry Loop
+If the score is insufficient, the **Critic** analyzes the failure *(e.g., missing edge cases, weak explanation)*. The Solver then retries with the Critic's feedback injected into the context.
 
-Curriculum (easy → hard)
-Optimization cycles
-Memory building
-2. User Task Mode (Real Usage)
+### 4. 🧬 Optimization — The Meta-Learning Phase
+Every **N episodes** *(default: 5)*, the **Optimizer** analyzes the batch of successes and failures to rewrite the Solver's system prompt.
 
-User provides task:
+> **Example Evolution:**
+>
+> 🔴 **Old Prompt:** `"You are a helpful assistant."`
+>
+> 🟢 **New Prompt:** `"For coding tasks: Always handle edge cases, include input validation, and explain logic briefly."`
 
-env.step(customTask)
+---
 
-System:
+## 🧠 Two Modes of Learning
 
-Uses learned memory + optimized prompt
-Solves task
-Gets graded
-Learns from user task too
+### 🎓 Training Mode *(Taskbank)*
+Iterates through a predefined curriculum — **Coding, Math, Reasoning** — to build a baseline of rules and strategies.
 
-👉 So learning is continuous, not limited to training.
+### ⚡ User Task Mode *(Real-Time)*
+Accepts custom tasks via `env.step(customTask)`. Uses learned memory to solve the task *and* learns from it in real-time, adding it to persistent memory.
 
-🔥 Key Insight
+---
 
-The system improves from BOTH:
+## ✨ Key Features
 
-Taskbank (training data)
-User inputs (real-world tasks)
-🧩 Multi-Agent System
-🤖 Solver
-Generates solution
-🧠 Critic
-Finds mistakes
-Suggests fixes
-🏆 Grader
-Scores response (0–1)
-⚡ Optimizer
-Rewrites system prompt using experience
-💾 Memory System (Persistent Learning)
+| Feature | Description |
+|---------|-------------|
+| ✅ **Persistent Learning** | Knowledge survives across runs via `agent_memory.json` |
+| 🧠 **Self-Rewriting Prompts** | Meta-learning optimizes its own instructions |
+| 🔁 **Critic Feedback Loop** | Multi-agent collaboration to fix errors before finalizing |
+| 📊 **Detailed Analytics** | Tracks success rates and rewards per category |
+| 📦 **Memory Compression** | Condenses raw history into high-level rules |
 
-Stored in:
+---
 
-memory/agent_memory.json
+## 🚀 Quick Start
 
-Tracks:
-
-Episodes (history)
-Learned Rules
-Prompt Strategies
-Task Performance Stats
-📊 Why Stats Matter
-Task Stats
-coding_easy → success rate, avg reward
-
-Helps:
-
-Understand weak areas
-Guide optimizer
-Global Stats
-totalEpisodes
-avgReward
-bestReward
-
-Helps:
-
-Track improvement over time
-Evaluate system performance
-🧠 Prompt Evolution (Very Important)
-
-Prompt is NOT static.
-
-It evolves like this:
-
-Episodes 1–5   → Base Prompt
-Episode 5      → Optimization → New Prompt
-Episodes 6–10  → Improved Prompt
-Episode 10     → Optimization again
-
-👉 Prompt becomes smarter over time.
-
-👥 Multi-User Behavior
-By Default:
-Shared memory file
-Shared learned rules
-Same optimized prompt
-
-👉 All users benefit from each other’s learning
-
-If Needed:
-
-You can isolate users by:
-
-Separate memory files
-Separate env instances
-✨ Standout Features
-✅ Persistent learning across runs
-🧠 Self-rewriting prompts (meta-learning)
-🔁 Retry loop with critic feedback
-📊 Hybrid reward system
-📦 Memory compression into rules
-🎯 Works on real-world tasks
-⚡ Learns from users dynamically
-🚀 Quick Start
+### Installation
+```bash
 npm install
+```
+
+### Run Training Demo
+```bash
 npm run demo
-npm start
+```
+
+### Launch Web Dashboard
+View the Solver thinking, Grader scoring, and Optimizer updates in real-time.
+```bash
 npm run web
-🌐 Web Dashboard
+```
+> 🌐 Accessible at **http://localhost:3000**
 
-Run:
+---
 
-npm run web
+## 📁 Project Structure
 
-Open:
-
-http://localhost:3000
-
-See:
-
-Solver thinking
-Grader scoring
-Critic feedback
-Memory updates
-Optimization in real-time
-🏗️ Architecture
-Task → Solver → Grader → Critic → [Retry] → Memory
-                                               ↓
-                          Optimizer ←── Episode batch
-                               ↓
-                        Solver prompt update
-📁 Project Structure
+```
 src/
-├── env/            # RL loop
-├── agents/         # Solver, Critic, Optimizer
-├── memory/         # Persistent learning system
-├── grader/         # Reward system
-├── tasks/          # Taskbank
-🧪 Usage
-const env = new SelfImprovingEnv();
+├── env/           # Core RL loop orchestration
+├── agents/        # Multi-agent logic (Solver, Critic, Optimizer)
+├── memory/        # JSON-based persistent storage system
+├── grader/        # Hybrid reward calculation
+├── tasks/         # Predefined task curriculum
+└── dashboard/     # Web UI components
+```
 
-// Training
-await env.run();
+---
 
-// Custom task
-const episode = await env.step(customTask);
-⚙️ Requirements
-Node.js 18+
-OpenAI / Claude API key
-🧠 Final Understanding
+## 📊 Monitoring Performance
 
-This is NOT just:
+The system tracks performance through `agent_memory.json`:
 
-“LLM answering questions”
+- **Task Stats** — Success rates per difficulty and category
+- **Global Stats** — Average reward trends and total episodes completed
+- **Prompt History** — View how the system prompt has evolved over time
 
-This is:
+---
 
-“LLM that improves itself based on experience”
+## 📄 License
+
+This project is open source. See [LICENSE](LICENSE) for details.
